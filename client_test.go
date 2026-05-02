@@ -1,18 +1,20 @@
-package http
+package http_test
 
 import (
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
+	ah "apigo.cc/go/http"
 	"golang.org/x/net/http2"
 )
 
 func TestHttp(t *testing.T) {
-	c := NewClient(5 * time.Second)
+	c := ah.NewClient(5 * time.Second)
 	// 使用 httpbin 或者可靠的地址
 	r := c.Get("https://httpbin.org/get")
 	if r.Error != nil {
@@ -26,9 +28,9 @@ func TestHttp(t *testing.T) {
 	type HttpBinGet struct {
 		Url string
 	}
-	res, err := ToT[HttpBinGet](r)
+	res, err := ah.Bind[HttpBinGet](r)
 	if err != nil {
-		t.Errorf("ToT failed: %v", err)
+		t.Errorf("Bind failed: %v", err)
 	}
 	if res.Url != "https://httpbin.org/get" {
 		t.Errorf("expected url match, got %s", res.Url)
@@ -49,7 +51,7 @@ func TestLocalServer(t *testing.T) {
 	// 等待启动
 	time.Sleep(100 * time.Millisecond)
 
-	c := NewClient(time.Second)
+	c := ah.NewClient(time.Second)
 	r := c.Get("http://127.0.0.1:18080/hello", "X-Test", "hi")
 	if r.Error != nil {
 		t.Fatalf("request failed: %v", r.Error)
@@ -86,7 +88,7 @@ func TestH2C(t *testing.T) {
 		}
 	}()
 
-	c := NewClientH2C(time.Second)
+	c := ah.NewClientH2C(time.Second)
 	r := c.Get("http://127.0.0.1:18081/")
 	if r.Error != nil {
 		t.Fatalf("h2c request failed: %v", r.Error)
@@ -105,7 +107,7 @@ func BenchmarkGet(b *testing.B) {
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
 
-	c := NewClient(0)
+	c := ah.NewClient(0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		r := c.Get("http://127.0.0.1:18082/")
@@ -124,17 +126,82 @@ func TestManualDo(t *testing.T) {
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
 
-	c := NewClient(time.Second)
+	c := ah.NewClient(time.Second)
 	r := c.ManualDo("GET", "http://127.0.0.1:18083/", nil)
 	if r.Error != nil {
 		t.Fatal(r.Error)
 	}
-	if r.data != nil {
-		t.Error("expected data to be nil in ManualDo")
-	}
+
 	defer r.Response.Body.Close()
 	buf, _ := io.ReadAll(r.Response.Body)
 	if string(buf) != "stream" {
 		t.Errorf("expected stream, got %s", string(buf))
 	}
 }
+
+func TestDownload(t *testing.T) {
+	content := "0123456789ABCDEF"
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
+			return
+		}
+		rangeHeader := r.Header.Get("Range")
+		if rangeHeader != "" {
+			var start, end int64
+			fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end)
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)))
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte(content[start : end+1]))
+			return
+		}
+		_, _ = w.Write([]byte(content))
+	})
+	server := &http.Server{Addr: ":18084", Handler: handler}
+	go func() { _ = server.ListenAndServe() }()
+	defer server.Close()
+	time.Sleep(100 * time.Millisecond)
+
+	c := ah.NewClient(time.Second)
+	c.DownloadPartSize = 4
+	tmpFile := "test_download.tmp"
+	defer os.Remove(tmpFile)
+
+	_, err := c.Download(tmpFile, "http://127.0.0.1:18084/", nil)
+	if err != nil {
+		t.Fatalf("download failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(tmpFile)
+	if string(data) != content {
+		t.Errorf("expected %s, got %s", content, string(data))
+	}
+}
+
+func TestMPost(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseMultipartForm(10 << 20)
+		f := r.FormValue("foo")
+		file, _, _ := r.FormFile("file")
+		var fileContent []byte
+		if file != nil {
+			fileContent, _ = io.ReadAll(file)
+		}
+		fmt.Fprintf(w, "foo=%s,file=%s", f, string(fileContent))
+	})
+	server := &http.Server{Addr: ":18085", Handler: handler}
+	go func() { _ = server.ListenAndServe() }()
+	defer server.Close()
+	time.Sleep(100 * time.Millisecond)
+
+	c := ah.NewClient(time.Second)
+	r, errs := c.PostMultipart("http://127.0.0.1:18085/", map[string]string{"foo": "bar"}, map[string]any{"file": []byte("baz")})
+	if len(errs) > 0 {
+		t.Fatalf("PostMultipart failed: %v", errs)
+	}
+	if r.String() != "foo=bar,file=baz" {
+		t.Errorf("expected foo=bar,file=baz, got %s", r.String())
+	}
+}
+
+

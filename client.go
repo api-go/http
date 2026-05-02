@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"apigo.cc/go/cast"
@@ -28,10 +29,12 @@ import (
 
 type Client struct {
 	pool             *http.Client
-	GlobalHeaders    map[string]string
+	globalHeaders    map[string]string
+	headersMu        sync.RWMutex
 	NoBody           bool
 	Debug            bool
 	DownloadPartSize int64
+	MaxConnsPerHost  int
 }
 
 type Result struct {
@@ -41,6 +44,12 @@ type Result struct {
 }
 
 type Form = map[string]string
+
+var bufferPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 func NewClient(timeout time.Duration) *Client {
 	if timeout < time.Millisecond && timeout > 0 {
@@ -55,7 +64,7 @@ func NewClient(timeout time.Duration) *Client {
 			},
 			Jar: jar,
 		},
-		GlobalHeaders:    map[string]string{},
+		globalHeaders:    map[string]string{},
 		DownloadPartSize: 4194304,
 	}
 }
@@ -80,7 +89,7 @@ func NewClientH2C(timeout time.Duration) *Client {
 	}
 	return &Client{
 		pool:             clientConfig,
-		GlobalHeaders:    map[string]string{},
+		globalHeaders:    map[string]string{},
 		DownloadPartSize: 4194304,
 	}
 }
@@ -94,11 +103,19 @@ func (c *Client) EnableRedirect() {
 }
 
 func (c *Client) SetGlobalHeader(k, v string) {
+	c.headersMu.Lock()
+	defer c.headersMu.Unlock()
 	if v == "" {
-		delete(c.GlobalHeaders, k)
+		delete(c.globalHeaders, k)
 	} else {
-		c.GlobalHeaders[k] = v
+		c.globalHeaders[k] = v
 	}
+}
+
+func (c *Client) GetGlobalHeader(k string) string {
+	c.headersMu.RLock()
+	defer c.headersMu.RUnlock()
+	return c.globalHeaders[k]
 }
 
 func (c *Client) Destroy() {
@@ -137,12 +154,12 @@ func (c *Client) ManualDoByRequest(request *http.Request, method, url string, da
 }
 
 func (c *Client) doByRequest(manualDo bool, request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
-	headers := map[string]string{}
+	headers := make([]string, 0, len(RelayHeaders)*2+len(settedHeaders)+4)
 
 	// 续传指定的头
 	for _, h := range RelayHeaders {
 		if v := request.Header.Get(h); v != "" {
-			headers[h] = v
+			headers = append(headers, h, v)
 		}
 	}
 
@@ -157,26 +174,26 @@ func (c *Client) doByRequest(manualDo bool, request *http.Request, method, url s
 	} else {
 		xForwardFor = remoteIP
 	}
-	headers[HeaderForwardedFor] = xForwardFor
+	headers = append(headers, HeaderForwardedFor, xForwardFor)
 
 	// 处理请求唯一编号
-	if headers[HeaderRequestID] == "" {
-		headers[HeaderRequestID] = string(encoding.Hex(rand.Bytes(16)))
+	foundID := false
+	for i := 1; i < len(headers); i += 2 {
+		if headers[i-1] == HeaderRequestID {
+			foundID = true
+			break
+		}
+	}
+	if !foundID {
+		headers = append(headers, HeaderRequestID, string(encoding.Hex(rand.Bytes(16))))
 	}
 
-	for i := 1; i < len(settedHeaders); i += 2 {
-		headers[settedHeaders[i-1]] = settedHeaders[i]
-	}
-
-	headerArgs := make([]string, 0, len(headers)*2)
-	for k, v := range headers {
-		headerArgs = append(headerArgs, k, v)
-	}
+	headers = append(headers, settedHeaders...)
 
 	if manualDo {
-		return c.ManualDo(method, url, data, headerArgs...)
+		return c.ManualDo(method, url, data, headers...)
 	}
-	return c.Do(method, url, data, headerArgs...)
+	return c.Do(method, url, data, headers...)
 }
 
 func (c *Client) Do(method, url string, data any, headers ...string) *Result {
@@ -192,14 +209,28 @@ type downloadRange struct {
 	End   int64
 }
 
+type offsetWriter struct {
+	fp     *os.File
+	offset int64
+}
+
+func (w *offsetWriter) Write(p []byte) (n int, err error) {
+	n, err = w.fp.WriteAt(p, w.offset)
+	w.offset += int64(n)
+	return
+}
+
 func (c *Client) downloadPart(fp *os.File, task *downloadRange, url string, headers ...string) (int64, error) {
-	headers[len(headers)-1] = fmt.Sprintf("bytes=%d-%d", task.Start, task.End)
-	r := c.ManualDo("GET", url, nil, headers...)
+	partHeaders := make([]string, len(headers))
+	copy(partHeaders, headers)
+	partHeaders[len(partHeaders)-1] = fmt.Sprintf("bytes=%d-%d", task.Start, task.End)
+
+	r := c.ManualDo("GET", url, nil, partHeaders...)
 	if r.Error != nil {
 		return 0, r.Error
 	}
 	defer r.Response.Body.Close()
-	return io.Copy(fp, r.Response.Body)
+	return io.Copy(&offsetWriter{fp: fp, offset: task.Start}, r.Response.Body)
 }
 
 func (c *Client) Download(filename, url string, callback func(start, end int64, ok bool, finished, total int64), headers ...string) (*Result, error) {
@@ -225,24 +256,50 @@ func (c *Client) Download(filename, url string, callback func(start, end int64, 
 		}
 		defer fp.Close()
 
-		finished := int64(0)
 		headers = append(headers, "Range", "")
+		var finished int64
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(tasks))
+
+		// 限制并发度，默认为 4，可以通过 Client 设置
+		concurrency := 4
+		if c.MaxConnsPerHost > 0 {
+			concurrency = c.MaxConnsPerHost
+		}
+		sem := make(chan struct{}, concurrency)
+
 		for _, task := range tasks {
-			n, err := c.downloadPart(fp, &task, url, headers...)
-			finished += n
-			if callback != nil {
-				callback(task.Start, task.End, err == nil, finished, total)
-			}
-			// 简单的重试逻辑
-			if err != nil {
-				n, err = c.downloadPart(fp, &task, url, headers...)
-				if err == nil {
-					finished += n
+			wg.Add(1)
+			go func(t downloadRange) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+
+				n, err := c.downloadPart(fp, &t, url, headers...)
+				if err != nil {
+					// 重试一次
+					n, err = c.downloadPart(fp, &t, url, headers...)
 				}
+
+				mu.Lock()
+				finished += n
 				if callback != nil {
-					callback(task.Start, task.End, err == nil, finished, total)
+					callback(t.Start, t.End, err == nil, finished, total)
 				}
-			}
+				mu.Unlock()
+
+				if err != nil {
+					errChan <- err
+				}
+			}(task)
+		}
+
+		wg.Wait()
+		close(errChan)
+
+		if len(errChan) > 0 {
+			return nil, <-errChan
 		}
 
 		if finished < total {
@@ -266,10 +323,13 @@ func (c *Client) Download(filename, url string, callback func(start, end int64, 
 	return r, err
 }
 
-func (c *Client) MPost(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error) {
+func (c *Client) PostMultipart(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error) {
 	errs := make([]error, 0)
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
+
+	writer := multipart.NewWriter(buf)
 
 	if formData != nil {
 		for k, v := range formData {
@@ -296,28 +356,28 @@ func (c *Client) MPost(url string, formData map[string]string, files map[string]
 				}
 			} else {
 				h := make(textproto.MIMEHeader)
-				var buf []byte
+				var dataBytes []byte
 				switch t := v.(type) {
 				case io.Reader:
-					buf, _ = io.ReadAll(t)
+					dataBytes, _ = io.ReadAll(t)
 					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, k, k))
 					h.Set("Content-Type", "application/octet-stream")
 				case []byte:
-					buf = t
+					dataBytes = t
 					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, k, k))
 					h.Set("Content-Type", "application/octet-stream")
 				case string:
-					buf = []byte(t)
+					dataBytes = []byte(t)
 					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.txt"`, k, k))
 					h.Set("Content-Type", "text/plain")
 				default:
-					buf = cast.MustJSONBytes(v)
+					dataBytes = cast.MustJSONBytes(v)
 					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.json"`, k, k))
 					h.Set("Content-Type", "application/json")
 				}
 
 				if part, err := writer.CreatePart(h); err == nil {
-					if _, err = part.Write(buf); err != nil {
+					if _, err = part.Write(dataBytes); err != nil {
 						errs = append(errs, err)
 					}
 				} else {
@@ -336,7 +396,7 @@ func (c *Client) MPost(url string, formData map[string]string, files map[string]
 	}
 
 	headers = append(headers, "Content-Type", writer.FormDataContentType())
-	r := c.Post(url, body, headers...)
+	r := c.Post(url, buf.Bytes(), headers...)
 	if r.Error != nil {
 		errs = append(errs, r.Error)
 	}
@@ -410,9 +470,11 @@ func (c *Client) do(fetchBody bool, method, url string, data any, headers ...str
 		}
 	}
 
-	for k, v := range c.GlobalHeaders {
+	c.headersMu.RLock()
+	for k, v := range c.globalHeaders {
 		req.Header.Set(k, v)
 	}
+	c.headersMu.RUnlock()
 
 	if c.Debug {
 		log.DefaultLogger.Info("http request", "method", req.Method, "url", req.URL.String(), "headers", req.Header)
@@ -476,7 +538,7 @@ func (rs *Result) Map() map[string]any {
 	return m
 }
 
-func (rs *Result) Arr() []any {
+func (rs *Result) Slice() []any {
 	var a []any
 	_ = rs.To(&a)
 	return a
@@ -498,9 +560,10 @@ func (rs *Result) To(v any) error {
 	return err
 }
 
-// ToT 使用泛型获取结果
-func ToT[T any](rs *Result) (T, error) {
+// Bind 使用泛型获取结果
+func Bind[T any](rs *Result) (T, error) {
 	var v T
 	err := rs.To(&v)
 	return v, err
 }
+
