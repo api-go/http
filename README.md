@@ -5,7 +5,6 @@
 ## 核心特性
 
 *   **极致精简**: 屏蔽复杂的 `net/http` 配置，提供一键式调用（Get/Post/Put/Delete/Head）。
-*   **泛型绑定**: 通过 `Bind[T](result)` 直接将响应内容绑定到指定类型的结构体或 Map。
 *   **智能重构**: 基于 `cast` 和 `convert` 模块实现零摩擦的数据映射。
 *   **并发下载**: 支持**并行多协程**分段下载大文件，内置自动重试机制。
 *   **Header 透传**: 自动处理微服务链路中常见的 `X-` 系列 Header 透传（如 `X-Request-ID`, `X-Real-IP`）。
@@ -15,7 +14,6 @@
 ## 🤖 开发与 AI 指导 (Developer & AI Guidelines)
 
 1.  **推荐使用 NewClient**: 通过 `NewClient(timeout)` 创建带连接池的客户端。
-2.  **善用泛型**: 优先使用 `Bind` 方法进行结果解析，避免手动反序列化。
 3.  **下载优化**: 可以通过 `client.MaxConnsPerHost` 控制下载并发度（默认为 4）。
 4.  **资源释放**: 使用 `ManualDo` 或直接访问 `Response.Body` 时，必须确保执行 `Close()`。
 
@@ -34,7 +32,7 @@ type User struct {
 }
 
 r := c.Get("https://api.example.com/user/1")
-user, err := http.Bind[User](r)
+user, err := http.To[User](r)
 if err == nil {
     fmt.Println(user.Name)
 }
@@ -80,7 +78,7 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 - `func (rs *Result) To(v any) error`: 将响应体解析到对象。
 - `func (rs *Result) Map() map[string]any`: 将响应体解析为 Map。
 - `func (rs *Result) Slice() []any`: 将响应体解析为 Slice。
-- `func Bind[T any](rs *Result) (T, error)`: 泛型解析辅助函数。
+- `func To[T any](rs *Result) (T, error)`: 泛型解析辅助函数。
 - `func (rs *Result) Save(filename string) error`: 将响应体保存到文件。
 
 ## 许可证

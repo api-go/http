@@ -28,7 +28,7 @@ func TestHttp(t *testing.T) {
 	type HttpBinGet struct {
 		Url string
 	}
-	res, err := ah.Bind[HttpBinGet](r)
+	res, err := ah.To[HttpBinGet](r)
 	if err != nil {
 		t.Errorf("Bind failed: %v", err)
 	}
@@ -203,5 +203,3 @@ func TestMPost(t *testing.T) {
 		t.Errorf("expected foo=bar,file=baz, got %s", r.String())
 	}
 }
-
-

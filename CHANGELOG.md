@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.0.3 (2026-05-03)
+- **API 变更**: 将泛型解析函数 `Bind[T]` 重命名为 `To[T]`，以保持与全局 API 风格一致。
+- **文档优化**: 移除冗余的 `AI.md`，更新 `README.md` 中的 API 示例。
+
 ## v1.0.2 (2026-05-03)
 - **Breaking Changes & API Renames**:
     - `ToT` 重命名为 `Bind` (泛型解析)。

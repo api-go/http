@@ -560,10 +560,9 @@ func (rs *Result) To(v any) error {
 	return err
 }
 
-// Bind 使用泛型获取结果
-func Bind[T any](rs *Result) (T, error) {
+// To 使用泛型获取结果
+func To[T any](rs *Result) (T, error) {
 	var v T
 	err := rs.To(&v)
 	return v, err
 }
-
