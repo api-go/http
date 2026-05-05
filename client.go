@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"apigo.cc/go/cast"
-	"apigo.cc/go/convert"
 	"apigo.cc/go/encoding"
 	"apigo.cc/go/file"
 	"apigo.cc/go/log"
@@ -94,81 +93,82 @@ func NewClientH2C(timeout time.Duration) *Client {
 	}
 }
 
-func (c *Client) GetRawClient() *http.Client {
-	return c.pool
+func (client *Client) GetRawClient() *http.Client {
+	return client.pool
 }
 
-func (c *Client) EnableRedirect() {
-	c.pool.CheckRedirect = nil
+func (client *Client) EnableRedirect() {
+	client.pool.CheckRedirect = nil
 }
 
-func (c *Client) SetGlobalHeader(k, v string) {
-	c.headersMu.Lock()
-	defer c.headersMu.Unlock()
-	if v == "" {
-		delete(c.globalHeaders, k)
+func (client *Client) SetGlobalHeader(key, value string) {
+	client.headersMu.Lock()
+	defer client.headersMu.Unlock()
+	if value == "" {
+		delete(client.globalHeaders, key)
 	} else {
-		c.globalHeaders[k] = v
+		client.globalHeaders[key] = value
 	}
 }
 
-func (c *Client) GetGlobalHeader(k string) string {
-	c.headersMu.RLock()
-	defer c.headersMu.RUnlock()
-	return c.globalHeaders[k]
+func (client *Client) GetGlobalHeader(key string) string {
+	client.headersMu.RLock()
+	defer client.headersMu.RUnlock()
+	return client.globalHeaders[key]
 }
 
-func (c *Client) Destroy() {
-	if c.pool != nil {
-		c.pool.CloseIdleConnections()
-		c.pool = nil
+func (client *Client) Destroy() {
+	if client.pool != nil {
+		client.pool.CloseIdleConnections()
+		client.pool = nil
 	}
 }
 
-func (c *Client) Get(url string, headers ...string) *Result {
-	return c.Do("GET", url, nil, headers...)
+func (client *Client) Get(url string, headers ...string) *Result {
+	return client.Do("GET", url, nil, headers...)
 }
 
-func (c *Client) Post(url string, data any, headers ...string) *Result {
-	return c.Do("POST", url, data, headers...)
+func (client *Client) Post(url string, data any, headers ...string) *Result {
+	return client.Do("POST", url, data, headers...)
 }
 
-func (c *Client) Put(url string, data any, headers ...string) *Result {
-	return c.Do("PUT", url, data, headers...)
+func (client *Client) Put(url string, data any, headers ...string) *Result {
+	return client.Do("PUT", url, data, headers...)
 }
 
-func (c *Client) Delete(url string, data any, headers ...string) *Result {
-	return c.Do("DELETE", url, data, headers...)
+func (client *Client) Delete(url string, data any, headers ...string) *Result {
+	return client.Do("DELETE", url, data, headers...)
 }
 
-func (c *Client) Head(url string, headers ...string) *Result {
-	return c.Do("HEAD", url, nil, headers...)
+func (client *Client) Head(url string, headers ...string) *Result {
+	return client.Do("HEAD", url, nil, headers...)
 }
 
-func (c *Client) DoByRequest(request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
-	return c.doByRequest(false, request, method, url, data, settedHeaders...)
+func (client *Client) DoByRequest(request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
+	return client.doByRequest(false, request, method, url, data, settedHeaders...)
 }
 
-func (c *Client) ManualDoByRequest(request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
-	return c.doByRequest(true, request, method, url, data, settedHeaders...)
+func (client *Client) ManualDoByRequest(request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
+	return client.doByRequest(true, request, method, url, data, settedHeaders...)
 }
 
-func (c *Client) doByRequest(manualDo bool, request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
+func (client *Client) doByRequest(manualDo bool, request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
 	headers := make([]string, 0, len(RelayHeaders)*2+len(settedHeaders)+4)
 
 	// 续传指定的头
-	for _, h := range RelayHeaders {
-		if v := request.Header.Get(h); v != "" {
-			headers = append(headers, h, v)
+	for _, headerName := range RelayHeaders {
+		if value := request.Header.Get(headerName); value != "" {
+			headers = append(headers, headerName, value)
 		}
 	}
 
 	// 续传 X-Forwarded-For
 	xForwardFor := request.Header.Get(HeaderForwardedFor)
-	remoteIP, _, _ := net.SplitHostPort(request.RemoteAddr)
-	if remoteIP == "" {
+	remoteIP, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err != nil {
 		remoteIP = request.RemoteAddr
 	}
+
 	if xForwardFor != "" {
 		xForwardFor = remoteIP + ", " + xForwardFor
 	} else {
@@ -191,17 +191,17 @@ func (c *Client) doByRequest(manualDo bool, request *http.Request, method, url s
 	headers = append(headers, settedHeaders...)
 
 	if manualDo {
-		return c.ManualDo(method, url, data, headers...)
+		return client.ManualDo(method, url, data, headers...)
 	}
-	return c.Do(method, url, data, headers...)
+	return client.Do(method, url, data, headers...)
 }
 
-func (c *Client) Do(method, url string, data any, headers ...string) *Result {
-	return c.do(true, method, url, data, headers...)
+func (client *Client) Do(method, url string, data any, headers ...string) *Result {
+	return client.do(true, method, url, data, headers...)
 }
 
-func (c *Client) ManualDo(method, url string, data any, headers ...string) *Result {
-	return c.do(false, method, url, data, headers...)
+func (client *Client) ManualDo(method, url string, data any, headers ...string) *Result {
+	return client.do(false, method, url, data, headers...)
 }
 
 type downloadRange struct {
@@ -220,29 +220,29 @@ func (w *offsetWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
-func (c *Client) downloadPart(fp *os.File, task *downloadRange, url string, headers ...string) (int64, error) {
+func (client *Client) downloadPart(fp *os.File, task *downloadRange, url string, headers ...string) (int64, error) {
 	partHeaders := make([]string, len(headers))
 	copy(partHeaders, headers)
 	partHeaders[len(partHeaders)-1] = fmt.Sprintf("bytes=%d-%d", task.Start, task.End)
 
-	r := c.ManualDo("GET", url, nil, partHeaders...)
-	if r.Error != nil {
-		return 0, r.Error
+	result := client.ManualDo("GET", url, nil, partHeaders...)
+	if result.Error != nil {
+		return 0, result.Error
 	}
-	defer r.Response.Body.Close()
-	return io.Copy(&offsetWriter{fp: fp, offset: task.Start}, r.Response.Body)
+	defer result.Response.Body.Close()
+	return io.Copy(&offsetWriter{fp: fp, offset: task.Start}, result.Response.Body)
 }
 
-func (c *Client) Download(filename, url string, callback func(start, end int64, ok bool, finished, total int64), headers ...string) (*Result, error) {
-	r1 := c.Head(url, headers...)
-	if r1.Error != nil {
-		return r1, r1.Error
+func (client *Client) Download(filename, url string, callback func(start, end int64, ok bool, finished, total int64), headers ...string) (*Result, error) {
+	resultHead := client.Head(url, headers...)
+	if resultHead.Error != nil {
+		return resultHead, resultHead.Error
 	}
-	total := r1.Response.ContentLength
+	total := resultHead.Response.ContentLength
 	if total > 0 {
 		tasks := make([]downloadRange, 0)
-		for i := int64(0); i < total; i += c.DownloadPartSize {
-			end := i + c.DownloadPartSize - 1
+		for i := int64(0); i < total; i += client.DownloadPartSize {
+			end := i + client.DownloadPartSize - 1
 			if end >= total {
 				end = total - 1
 			}
@@ -264,8 +264,8 @@ func (c *Client) Download(filename, url string, callback func(start, end int64, 
 
 		// 限制并发度，默认为 4，可以通过 Client 设置
 		concurrency := 4
-		if c.MaxConnsPerHost > 0 {
-			concurrency = c.MaxConnsPerHost
+		if client.MaxConnsPerHost > 0 {
+			concurrency = client.MaxConnsPerHost
 		}
 		sem := make(chan struct{}, concurrency)
 
@@ -276,10 +276,10 @@ func (c *Client) Download(filename, url string, callback func(start, end int64, 
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
-				n, err := c.downloadPart(fp, &t, url, headers...)
+				n, err := client.downloadPart(fp, &t, url, headers...)
 				if err != nil {
 					// 重试一次
-					n, err = c.downloadPart(fp, &t, url, headers...)
+					n, err = client.downloadPart(fp, &t, url, headers...)
 				}
 
 				mu.Lock()
@@ -305,25 +305,25 @@ func (c *Client) Download(filename, url string, callback func(start, end int64, 
 		if finished < total {
 			return nil, errors.New("download file failed: incomplete")
 		}
-		return r1, nil
+		return resultHead, nil
 	}
 
-	r := c.ManualDo("GET", url, nil, headers...)
-	if r.Error != nil {
-		return r, r.Error
+	result := client.ManualDo("GET", url, nil, headers...)
+	if result.Error != nil {
+		return result, result.Error
 	}
-	defer r.Response.Body.Close()
+	defer result.Response.Body.Close()
 	file.EnsureParentDir(filename)
 	fp, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
-		return r, err
+		return result, err
 	}
 	defer fp.Close()
-	_, err = io.Copy(fp, r.Response.Body)
-	return r, err
+	_, err = io.Copy(fp, result.Response.Body)
+	return result, err
 }
 
-func (c *Client) PostMultipart(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error) {
+func (client *Client) PostMultipart(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error) {
 	errs := make([]error, 0)
 	buf := bufferPool.Get().(*bytes.Buffer)
 	buf.Reset()
@@ -332,47 +332,60 @@ func (c *Client) PostMultipart(url string, formData map[string]string, files map
 	writer := multipart.NewWriter(buf)
 
 	if formData != nil {
-		for k, v := range formData {
-			if err := writer.WriteField(k, v); err != nil {
+		for key, value := range formData {
+			if err := writer.WriteField(key, value); err != nil {
 				errs = append(errs, err)
 			}
 		}
 	}
 
 	if files != nil {
-		for k, v := range files {
-			if filename, ok := v.(string); ok && file.Exists(filename) {
-				if fp, err := os.Open(filename); err == nil {
-					if part, err := writer.CreateFormFile(k, filepath.Base(filename)); err == nil {
-						if _, err = io.Copy(part, fp); err != nil {
-							errs = append(errs, err)
-						}
+		for key, value := range files {
+			if filename, ok := value.(string); ok && file.Exists(filename) {
+				var reader io.Reader
+				var closer io.Closer
+				if mf := file.ReadFileFromMemory(filename); mf != nil {
+					reader = bytes.NewReader(mf.GetData())
+				} else {
+					if fp, err := os.Open(filename); err == nil {
+						reader = fp
+						closer = fp
 					} else {
 						errs = append(errs, err)
+						continue
 					}
-					_ = fp.Close()
+				}
+
+				if part, err := writer.CreateFormFile(key, filepath.Base(filename)); err == nil {
+					if _, err = io.Copy(part, reader); err != nil {
+						errs = append(errs, err)
+					}
 				} else {
 					errs = append(errs, err)
+				}
+
+				if closer != nil {
+					_ = closer.Close()
 				}
 			} else {
 				h := make(textproto.MIMEHeader)
 				var dataBytes []byte
-				switch t := v.(type) {
+				switch t := value.(type) {
 				case io.Reader:
 					dataBytes, _ = io.ReadAll(t)
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, k, k))
+					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
 					h.Set("Content-Type", "application/octet-stream")
 				case []byte:
 					dataBytes = t
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, k, k))
+					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
 					h.Set("Content-Type", "application/octet-stream")
 				case string:
 					dataBytes = []byte(t)
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.txt"`, k, k))
+					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.txt"`, key, key))
 					h.Set("Content-Type", "text/plain")
 				default:
-					dataBytes = cast.MustJSONBytes(v)
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.json"`, k, k))
+					dataBytes = cast.As(cast.ToJSONBytes(value))
+					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.json"`, key, key))
 					h.Set("Content-Type", "application/json")
 				}
 
@@ -396,14 +409,14 @@ func (c *Client) PostMultipart(url string, formData map[string]string, files map
 	}
 
 	headers = append(headers, "Content-Type", writer.FormDataContentType())
-	r := c.Post(url, buf.Bytes(), headers...)
-	if r.Error != nil {
-		errs = append(errs, r.Error)
+	result := client.Post(url, buf.Bytes(), headers...)
+	if result.Error != nil {
+		errs = append(errs, result.Error)
 	}
-	return r, errs
+	return result, errs
 }
 
-func (c *Client) do(fetchBody bool, method, url string, data any, headers ...string) *Result {
+func (client *Client) do(fetchBody bool, method, url string, data any, headers ...string) *Result {
 	var req *http.Request
 	var err error
 	contentType := ""
@@ -470,17 +483,17 @@ func (c *Client) do(fetchBody bool, method, url string, data any, headers ...str
 		}
 	}
 
-	c.headersMu.RLock()
-	for k, v := range c.globalHeaders {
+	client.headersMu.RLock()
+	for k, v := range client.globalHeaders {
 		req.Header.Set(k, v)
 	}
-	c.headersMu.RUnlock()
+	client.headersMu.RUnlock()
 
-	if c.Debug {
+	if client.Debug {
 		log.DefaultLogger.Info("http request", "method", req.Method, "url", req.URL.String(), "headers", req.Header)
 	}
 
-	res, err := c.pool.Do(req)
+	res, err := client.pool.Do(req)
 	if err != nil {
 		return &Result{Error: err}
 	}
@@ -489,7 +502,7 @@ func (c *Client) do(fetchBody bool, method, url string, data any, headers ...str
 		res.ContentLength = cast.Int64(res.Header.Get("Content-Length"))
 	}
 
-	if !fetchBody || c.NoBody {
+	if !fetchBody || client.NoBody {
 		return &Result{Response: res}
 	}
 
@@ -499,61 +512,61 @@ func (c *Client) do(fetchBody bool, method, url string, data any, headers ...str
 		return &Result{Error: err, Response: res}
 	}
 
-	if c.Debug {
+	if client.Debug {
 		log.DefaultLogger.Info("http response", "status", res.StatusCode, "len", len(bodyBytes))
 	}
 
 	return &Result{data: bodyBytes, Response: res}
 }
 
-func (rs *Result) Save(filename string) error {
+func (result *Result) Save(filename string) error {
 	file.EnsureParentDir(filename)
-	if rs.data != nil {
-		return file.WriteBytes(filename, rs.data)
+	if result.data != nil {
+		return file.WriteBytes(filename, result.data)
 	}
-	if rs.Response != nil && rs.Response.Body != nil {
-		defer rs.Response.Body.Close()
+	if result.Response != nil && result.Response.Body != nil {
+		defer result.Response.Body.Close()
 		fp, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 		if err != nil {
 			return err
 		}
 		defer fp.Close()
-		_, err = io.Copy(fp, rs.Response.Body)
+		_, err = io.Copy(fp, result.Response.Body)
 		return err
 	}
 	return errors.New("no data to save")
 }
 
-func (rs *Result) String() string {
-	return string(rs.data)
+func (result *Result) String() string {
+	return string(result.data)
 }
 
-func (rs *Result) Bytes() []byte {
-	return rs.data
+func (result *Result) Bytes() []byte {
+	return result.data
 }
 
-func (rs *Result) Map() map[string]any {
+func (result *Result) Map() map[string]any {
 	var m map[string]any
-	_ = rs.To(&m)
+	_ = result.To(&m)
 	return m
 }
 
-func (rs *Result) Slice() []any {
+func (result *Result) Slice() []any {
 	var a []any
-	_ = rs.To(&a)
+	_ = result.To(&a)
 	return a
 }
 
-func (rs *Result) To(v any) error {
-	if rs.data == nil {
+func (result *Result) To(v any) error {
+	if result.data == nil {
 		return errors.New("no data")
 	}
-	_, err := cast.UnmarshalJSONBytes(rs.data, v)
+	err := cast.UnmarshalJSON(result.data, v)
 	if err != nil {
 		// 如果 cast 直接解不出来，尝试通过 convert 做深度映射（处理 struct 字段匹配等）
 		var tmp any
-		if _, err2 := cast.UnmarshalJSONBytes(rs.data, &tmp); err2 == nil {
-			convert.To(tmp, v)
+		if err2 := cast.UnmarshalJSON(result.data, &tmp); err2 == nil {
+			cast.Convert(v, tmp)
 			return nil
 		}
 	}
@@ -561,8 +574,8 @@ func (rs *Result) To(v any) error {
 }
 
 // To 使用泛型获取结果
-func To[T any](rs *Result) (T, error) {
+func To[T any](result *Result) (T, error) {
 	var v T
-	err := rs.To(&v)
+	err := result.To(&v)
 	return v, err
 }

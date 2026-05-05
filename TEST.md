@@ -14,5 +14,5 @@ goos: darwin
 goarch: amd64
 pkg: apigo.cc/go/http
 cpu: Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz
-BenchmarkGet-16            15244             79100 ns/op
+BenchmarkGet-16            15944             73379 ns/op
 ```
