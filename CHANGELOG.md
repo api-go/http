@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## v1.0.8 (2026-05-08)
+- **性能优化 (Memory Efficiency)**:
+    - 重构 `Multipart` 处理逻辑，采用 `io.Pipe` 实现流式上传，彻底解决大文件上传时的内存撑爆问题。
+    - 引入 `writeMultipartPart` 与 `writeMultipartFile` 辅助函数，优化分块写入逻辑。
+- **功能增强 (Unified Type Handling)**:
+    - 统一 `do` 方法内部逻辑，通过类型分组消除冗余代码。
+    - 将 `map[string][]any` 提升为 `Multipart` 处理，确保复杂/混合数据类型的正确流式发送。
+    - 完善对 `url.Values`, `map[string][]string`, `Form` 的统一表单编码支持。
+    - 优化 `Multipart` 对多值字段的支持，允许在 `Multipart` 映射中使用 `[]string` 或 `[]any` 发送同名多参数。
+- **基础设施对齐**: 
+    - 更新 `go/encoding` 至 v1.0.6。
+    - 移除 `bufferPool` 在 `Multipart` 中的使用，转向更高效的流式 IO。
+
+## v1.0.6 (2026-05-07)
+- 内部版本，优化 Header 自动透传逻辑。
+
+## v1.0.5 (2026-05-06)
+- 内部版本，增强对 H2C 场景下的连接池管理。
+
 ## v1.0.4 (2026-05-05)
 - **基础设施对齐**: 
     - 更新 `go/file` 至 v1.0.5, `go/log` 至 v1.1.1, `go/config` 至 v1.0.5。

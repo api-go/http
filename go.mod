@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	apigo.cc/go/cast v1.2.8
-	apigo.cc/go/encoding v1.0.5
+	apigo.cc/go/encoding v1.0.6
 	apigo.cc/go/file v1.0.7
 	apigo.cc/go/log v1.1.9
 	apigo.cc/go/rand v1.0.5

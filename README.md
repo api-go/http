@@ -36,7 +36,11 @@ user, err := http.To[User](r)
 if err == nil {
     fmt.Println(user.Name)
 }
+
+// 支持 map[string][]string 或 map[string][]any 作为表单 (application/x-www-form-urlencoded)
+c.Post("https://api.example.com/update", map[string][]string{"tags": {"go", "http"}})
 ```
+
 
 ### 2. Header 透传 (Discover Relay)
 在处理外部请求时，自动从原请求中提取并续传关键 Header。
@@ -73,11 +77,13 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 
 ### 特殊类型
 - `type Form map[string]string`: 用于 `Post/Put` 等方法，显式指定为 `application/x-www-form-urlencoded` 格式。
-    - 注意：直接传入 `map[string]string` 会被默认识别为 `application/json`。
-- `type Multipart map[string]any`: 用于 `Post/Put` 等方法，支持混合表单字段与文件上传。
-    - 如果值为 `string` 且指向有效文件路径，则作为文件上传。
-    - 如果值为 `[]byte` 或 `io.Reader`，则作为文件上传。
-    - 其他类型将作为普通表单字段（复杂类型会自动转为 JSON）。
+    - 注意：直接传入 `map[string]string` 会被默认识别为 `application/json`；传入 `map[string][]string` 或 `map[string][]any` 会被识别为 `application/x-www-form-urlencoded`。
+- `type Multipart map[string]any`: 用于 `Post/Put` 等方法，支持混合表单字段与文件流式上传。
+    - **流式上传**: 内部使用 `io.Pipe` 结合 `multipart.Writer` 实现，支持超大文件而不会占用过多内存。
+    - **文件识别**: 如果值为 `string` 且指向有效文件路径，则作为文件上传。
+    - **流/字节**: 如果值为 `[]byte` 或 `io.Reader`，则作为文件上传。
+    - **多值支持**: 如果值为 `[]string` 或 `[]any`，将产生多个同名的表单字段或文件。
+    - **其他类型**: 将作为普通表单字段（复杂类型会自动转为 JSON）。
 
 ### 响应处理 (Result)
 - `func (rs *Result) String() string`: 返回响应体字符串。

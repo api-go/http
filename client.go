@@ -45,12 +45,6 @@ type Result struct {
 type Form map[string]string
 type Multipart map[string]any
 
-var bufferPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
-}
-
 func NewClient(timeout time.Duration) *Client {
 	if timeout < time.Millisecond && timeout > 0 {
 		timeout *= time.Millisecond
@@ -324,72 +318,95 @@ func (client *Client) Download(filename, url string, callback func(start, end in
 	return result, err
 }
 
-func (client *Client) buildMultipart(writer *multipart.Writer, data map[string]any) []error {
-	errs := make([]error, 0)
+func (client *Client) buildMultipart(writer *multipart.Writer, data map[string]any) error {
 	for key, value := range data {
-		if filename, ok := value.(string); ok && file.Exists(filename) {
-			var r io.Reader
-			var closer io.Closer
-			if mf := file.ReadFileFromMemory(filename); mf != nil {
-				r = bytes.NewReader(mf.GetData())
-			} else {
-				if fp, err := os.Open(filename); err == nil {
-					r = fp
-					closer = fp
-				} else {
-					errs = append(errs, err)
-					continue
-				}
-			}
-
-			if part, err := writer.CreateFormFile(key, filepath.Base(filename)); err == nil {
-				if _, err = io.Copy(part, r); err != nil {
-					errs = append(errs, err)
-				}
-			} else {
-				errs = append(errs, err)
-			}
-
-			if closer != nil {
-				_ = closer.Close()
-			}
-		} else {
-			var dataBytes []byte
-			h := make(textproto.MIMEHeader)
-			isField := false
-			switch t := value.(type) {
-			case io.Reader:
-				dataBytes, _ = io.ReadAll(t)
-				h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
-				h.Set("Content-Type", "application/octet-stream")
-			case []byte:
-				dataBytes = t
-				h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
-				h.Set("Content-Type", "application/octet-stream")
-			case string:
-				isField = true
-				dataBytes = []byte(t)
-			default:
-				isField = true
-				dataBytes, _ = cast.ToJSONBytes(value)
-			}
-
-			if isField {
-				if err := writer.WriteField(key, string(dataBytes)); err != nil {
-					errs = append(errs, err)
-				}
-			} else {
-				if part, err := writer.CreatePart(h); err == nil {
-					if _, err = part.Write(dataBytes); err != nil {
-						errs = append(errs, err)
-					}
-				} else {
-					errs = append(errs, err)
-				}
-			}
+		if err := client.writeMultipartPart(writer, key, value); err != nil {
+			return err
 		}
 	}
-	return errs
+	return nil
+}
+
+func (client *Client) writeMultipartPart(writer *multipart.Writer, key string, value any) error {
+	if value == nil {
+		return nil
+	}
+
+	// 检查是否是文件
+	if filename, ok := value.(string); ok && file.Exists(filename) {
+		return client.writeMultipartFile(writer, key, filename)
+	}
+
+	switch t := value.(type) {
+	case []string:
+		for _, v := range t {
+			if err := client.writeMultipartPart(writer, key, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	case []any:
+		for _, v := range t {
+			if err := client.writeMultipartPart(writer, key, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	case io.Reader:
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
+		h.Set("Content-Type", "application/octet-stream")
+		part, err := writer.CreatePart(h)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(part, t)
+		return err
+	case []byte:
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
+		h.Set("Content-Type", "application/octet-stream")
+		part, err := writer.CreatePart(h)
+		if err != nil {
+			return err
+		}
+		_, err = part.Write(t)
+		return err
+	case string:
+		return writer.WriteField(key, t)
+	default:
+		// 其他复杂类型序列化为 JSON
+		bytesData, err := cast.ToJSONBytes(value)
+		if err != nil {
+			return err
+		}
+		return writer.WriteField(key, string(bytesData))
+	}
+}
+
+func (client *Client) writeMultipartFile(writer *multipart.Writer, key, filename string) error {
+	var r io.Reader
+	var closer io.Closer
+	if mf := file.ReadFileFromMemory(filename); mf != nil {
+		r = bytes.NewReader(mf.GetData())
+	} else {
+		fp, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		r = fp
+		closer = fp
+	}
+	if closer != nil {
+		defer closer.Close()
+	}
+
+	part, err := writer.CreateFormFile(key, filepath.Base(filename))
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(part, r)
+	return err
 }
 
 func (client *Client) do(fetchBody bool, method, url string, data any, headers ...string) *Result {
@@ -409,36 +426,49 @@ func (client *Client) do(fetchBody bool, method, url string, data any, headers .
 		case string:
 			reader = strings.NewReader(t)
 			contentLength = len(t)
-		case url2.Values:
-			encoded := t.Encode()
-			reader = strings.NewReader(encoded)
-			contentType = "application/x-www-form-urlencoded"
-			contentLength = len(encoded)
-		case Form:
-			values := url2.Values{}
-			for k, v := range t {
-				values.Set(k, v)
+		case url2.Values, map[string][]string, Form:
+			var values url2.Values
+			switch v := t.(type) {
+			case url2.Values:
+				values = v
+			case map[string][]string:
+				values = v
+			case Form:
+				values = url2.Values{}
+				for k, v1 := range v {
+					values.Set(k, v1)
+				}
 			}
 			encoded := values.Encode()
 			reader = strings.NewReader(encoded)
 			contentType = "application/x-www-form-urlencoded"
 			contentLength = len(encoded)
-		case Multipart:
-			buf := bufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			defer bufferPool.Put(buf)
-			writer := multipart.NewWriter(buf)
-			errs := client.buildMultipart(writer, t)
-			if err := writer.Close(); err != nil {
-				errs = append(errs, err)
+		case Multipart, map[string][]any:
+			var mData map[string]any
+			if m, ok := t.(Multipart); ok {
+				mData = m
+			} else {
+				m := t.(map[string][]any)
+				mData = make(map[string]any, len(m))
+				for k, v := range m {
+					mData[k] = v
+				}
 			}
-			if len(errs) > 0 {
-				return &Result{Error: errors.Join(errs...)}
-			}
-			bytesData := buf.Bytes()
-			reader = bytes.NewReader(bytesData)
+			pr, pw := io.Pipe()
+			writer := multipart.NewWriter(pw)
 			contentType = writer.FormDataContentType()
-			contentLength = len(bytesData)
+			reader = pr
+			go func() {
+				err := client.buildMultipart(writer, mData)
+				if err == nil {
+					err = writer.Close()
+				}
+				if err != nil {
+					_ = pw.CloseWithError(err)
+				} else {
+					_ = pw.Close()
+				}
+			}()
 		default:
 			bytesData, _ := cast.ToJSONBytes(data)
 			if len(bytesData) > 0 && string(bytesData) != "null" {
