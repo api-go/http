@@ -66,11 +66,18 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 
 ### 请求方法
 - `func (c *Client) Get(url string, headers ...string) *Result`
-- `func (c *Client) Post(url string, data any, headers ...string) *Result`
+- `func (c *Client) Post(url string, data any, headers ...string) *Result`: 支持多种数据类型（JSON, Form, Multipart）。
 - `func (c *Client) Put(url string, data any, headers ...string) *Result`
 - `func (c *Client) Delete(url string, data any, headers ...string) *Result`
 - `func (c *Client) Head(url string, headers ...string) *Result`
-- `func (c *Client) PostMultipart(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error)`: 多部分表单提交（支持文件与流）。
+
+### 特殊类型
+- `type Form map[string]string`: 用于 `Post/Put` 等方法，显式指定为 `application/x-www-form-urlencoded` 格式。
+    - 注意：直接传入 `map[string]string` 会被默认识别为 `application/json`。
+- `type Multipart map[string]any`: 用于 `Post/Put` 等方法，支持混合表单字段与文件上传。
+    - 如果值为 `string` 且指向有效文件路径，则作为文件上传。
+    - 如果值为 `[]byte` 或 `io.Reader`，则作为文件上传。
+    - 其他类型将作为普通表单字段（复杂类型会自动转为 JSON）。
 
 ### 响应处理 (Result)
 - `func (rs *Result) String() string`: 返回响应体字符串。

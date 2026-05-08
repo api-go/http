@@ -178,7 +178,7 @@ func TestDownload(t *testing.T) {
 	}
 }
 
-func TestMPost(t *testing.T) {
+func TestMultipartDo(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseMultipartForm(10 << 20)
 		f := r.FormValue("foo")
@@ -189,17 +189,43 @@ func TestMPost(t *testing.T) {
 		}
 		fmt.Fprintf(w, "foo=%s,file=%s", f, string(fileContent))
 	})
-	server := &http.Server{Addr: ":18085", Handler: handler}
+	server := &http.Server{Addr: ":18086", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
 
 	c := ah.NewClient(time.Second)
-	r, errs := c.PostMultipart("http://127.0.0.1:18085/", map[string]string{"foo": "bar"}, map[string]any{"file": []byte("baz")})
-	if len(errs) > 0 {
-		t.Fatalf("PostMultipart failed: %v", errs)
+	r := c.Post("http://127.0.0.1:18086/", ah.Multipart{"foo": "bar", "file": []byte("baz")})
+	if r.Error != nil {
+		t.Fatalf("Post with Multipart failed: %v", r.Error)
 	}
 	if r.String() != "foo=bar,file=baz" {
 		t.Errorf("expected foo=bar,file=baz, got %s", r.String())
+	}
+}
+
+func TestFormAndMap(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ct := r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		fmt.Fprintf(w, "ct=%s,body=%s", ct, string(body))
+	})
+	server := &http.Server{Addr: ":18087", Handler: handler}
+	go func() { _ = server.ListenAndServe() }()
+	defer server.Close()
+	time.Sleep(100 * time.Millisecond)
+
+	c := ah.NewClient(time.Second)
+
+	// Test Form (urlencoded)
+	r1 := c.Post("http://127.0.0.1:18087/", ah.Form{"foo": "bar"})
+	if r1.String() != "ct=application/x-www-form-urlencoded,body=foo=bar" {
+		t.Errorf("Form failed, got: %s", r1.String())
+	}
+
+	// Test map[string]string (JSON)
+	r2 := c.Post("http://127.0.0.1:18087/", map[string]string{"foo": "bar"})
+	if r2.String() != `ct=application/json,body={"foo":"bar"}` {
+		t.Errorf("map[string]string failed, got: %s", r2.String())
 	}
 }

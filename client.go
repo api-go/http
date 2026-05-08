@@ -42,7 +42,8 @@ type Result struct {
 	data     []byte
 }
 
-type Form = map[string]string
+type Form map[string]string
+type Multipart map[string]any
 
 var bufferPool = sync.Pool{
 	New: func() any {
@@ -162,6 +163,18 @@ func (client *Client) doByRequest(manualDo bool, request *http.Request, method, 
 		}
 	}
 
+	// 确保 Request-ID 存在
+	foundID := false
+	for i := 1; i < len(headers); i += 2 {
+		if headers[i-1] == HeaderRequestID {
+			foundID = true
+			break
+		}
+	}
+	if !foundID {
+		headers = append(headers, HeaderRequestID, string(encoding.Hex(rand.Bytes(16))))
+	}
+
 	// 续传 X-Forwarded-For
 	xForwardFor := request.Header.Get(HeaderForwardedFor)
 	remoteIP, _, err := net.SplitHostPort(request.RemoteAddr)
@@ -175,18 +188,6 @@ func (client *Client) doByRequest(manualDo bool, request *http.Request, method, 
 		xForwardFor = remoteIP
 	}
 	headers = append(headers, HeaderForwardedFor, xForwardFor)
-
-	// 处理请求唯一编号
-	foundID := false
-	for i := 1; i < len(headers); i += 2 {
-		if headers[i-1] == HeaderRequestID {
-			foundID = true
-			break
-		}
-	}
-	if !foundID {
-		headers = append(headers, HeaderRequestID, string(encoding.Hex(rand.Bytes(16))))
-	}
 
 	headers = append(headers, settedHeaders...)
 
@@ -323,72 +324,61 @@ func (client *Client) Download(filename, url string, callback func(start, end in
 	return result, err
 }
 
-func (client *Client) PostMultipart(url string, formData map[string]string, files map[string]any, headers ...string) (*Result, []error) {
+func (client *Client) buildMultipart(writer *multipart.Writer, data map[string]any) []error {
 	errs := make([]error, 0)
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufferPool.Put(buf)
-
-	writer := multipart.NewWriter(buf)
-
-	if formData != nil {
-		for key, value := range formData {
-			if err := writer.WriteField(key, value); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-
-	if files != nil {
-		for key, value := range files {
-			if filename, ok := value.(string); ok && file.Exists(filename) {
-				var reader io.Reader
-				var closer io.Closer
-				if mf := file.ReadFileFromMemory(filename); mf != nil {
-					reader = bytes.NewReader(mf.GetData())
-				} else {
-					if fp, err := os.Open(filename); err == nil {
-						reader = fp
-						closer = fp
-					} else {
-						errs = append(errs, err)
-						continue
-					}
-				}
-
-				if part, err := writer.CreateFormFile(key, filepath.Base(filename)); err == nil {
-					if _, err = io.Copy(part, reader); err != nil {
-						errs = append(errs, err)
-					}
+	for key, value := range data {
+		if filename, ok := value.(string); ok && file.Exists(filename) {
+			var r io.Reader
+			var closer io.Closer
+			if mf := file.ReadFileFromMemory(filename); mf != nil {
+				r = bytes.NewReader(mf.GetData())
+			} else {
+				if fp, err := os.Open(filename); err == nil {
+					r = fp
+					closer = fp
 				} else {
 					errs = append(errs, err)
+					continue
 				}
+			}
 
-				if closer != nil {
-					_ = closer.Close()
+			if part, err := writer.CreateFormFile(key, filepath.Base(filename)); err == nil {
+				if _, err = io.Copy(part, r); err != nil {
+					errs = append(errs, err)
 				}
 			} else {
-				h := make(textproto.MIMEHeader)
-				var dataBytes []byte
-				switch t := value.(type) {
-				case io.Reader:
-					dataBytes, _ = io.ReadAll(t)
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
-					h.Set("Content-Type", "application/octet-stream")
-				case []byte:
-					dataBytes = t
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
-					h.Set("Content-Type", "application/octet-stream")
-				case string:
-					dataBytes = []byte(t)
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.txt"`, key, key))
-					h.Set("Content-Type", "text/plain")
-				default:
-					dataBytes = cast.As(cast.ToJSONBytes(value))
-					h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.json"`, key, key))
-					h.Set("Content-Type", "application/json")
-				}
+				errs = append(errs, err)
+			}
 
+			if closer != nil {
+				_ = closer.Close()
+			}
+		} else {
+			var dataBytes []byte
+			h := make(textproto.MIMEHeader)
+			isField := false
+			switch t := value.(type) {
+			case io.Reader:
+				dataBytes, _ = io.ReadAll(t)
+				h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
+				h.Set("Content-Type", "application/octet-stream")
+			case []byte:
+				dataBytes = t
+				h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, key, key))
+				h.Set("Content-Type", "application/octet-stream")
+			case string:
+				isField = true
+				dataBytes = []byte(t)
+			default:
+				isField = true
+				dataBytes, _ = cast.ToJSONBytes(value)
+			}
+
+			if isField {
+				if err := writer.WriteField(key, string(dataBytes)); err != nil {
+					errs = append(errs, err)
+				}
+			} else {
 				if part, err := writer.CreatePart(h); err == nil {
 					if _, err = part.Write(dataBytes); err != nil {
 						errs = append(errs, err)
@@ -399,21 +389,7 @@ func (client *Client) PostMultipart(url string, formData map[string]string, file
 			}
 		}
 	}
-
-	if err := writer.Close(); err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return nil, errs
-	}
-
-	headers = append(headers, "Content-Type", writer.FormDataContentType())
-	result := client.Post(url, buf.Bytes(), headers...)
-	if result.Error != nil {
-		errs = append(errs, result.Error)
-	}
-	return result, errs
+	return errs
 }
 
 func (client *Client) do(fetchBody bool, method, url string, data any, headers ...string) *Result {
@@ -438,13 +414,7 @@ func (client *Client) do(fetchBody bool, method, url string, data any, headers .
 			reader = strings.NewReader(encoded)
 			contentType = "application/x-www-form-urlencoded"
 			contentLength = len(encoded)
-		case map[string][]string:
-			values := url2.Values(t)
-			encoded := values.Encode()
-			reader = strings.NewReader(encoded)
-			contentType = "application/x-www-form-urlencoded"
-			contentLength = len(encoded)
-		case map[string]string:
+		case Form:
 			values := url2.Values{}
 			for k, v := range t {
 				values.Set(k, v)
@@ -453,6 +423,22 @@ func (client *Client) do(fetchBody bool, method, url string, data any, headers .
 			reader = strings.NewReader(encoded)
 			contentType = "application/x-www-form-urlencoded"
 			contentLength = len(encoded)
+		case Multipart:
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
+			defer bufferPool.Put(buf)
+			writer := multipart.NewWriter(buf)
+			errs := client.buildMultipart(writer, t)
+			if err := writer.Close(); err != nil {
+				errs = append(errs, err)
+			}
+			if len(errs) > 0 {
+				return &Result{Error: errors.Join(errs...)}
+			}
+			bytesData := buf.Bytes()
+			reader = bytes.NewReader(bytesData)
+			contentType = writer.FormDataContentType()
+			contentLength = len(bytesData)
 		default:
 			bytesData, _ := cast.ToJSONBytes(data)
 			if len(bytesData) > 0 && string(bytesData) != "null" {
@@ -558,19 +544,10 @@ func (result *Result) Slice() []any {
 }
 
 func (result *Result) To(v any) error {
-	if result.data == nil {
+	if len(result.data) == 0 {
 		return errors.New("no data")
 	}
-	err := cast.UnmarshalJSON(result.data, v)
-	if err != nil {
-		// 如果 cast 直接解不出来，尝试通过 convert 做深度映射（处理 struct 字段匹配等）
-		var tmp any
-		if err2 := cast.UnmarshalJSON(result.data, &tmp); err2 == nil {
-			cast.Convert(v, tmp)
-			return nil
-		}
-	}
-	return err
+	return cast.UnmarshalJSON(result.data, v)
 }
 
 // To 使用泛型获取结果
