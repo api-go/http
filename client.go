@@ -380,7 +380,12 @@ func (client *Client) writeMultipartPart(writer *multipart.Writer, key string, v
 		if err != nil {
 			return err
 		}
-		return writer.WriteField(key, string(bytesData))
+		part, err := writer.CreateFormField(key)
+		if err != nil {
+			return err
+		}
+		_, err = part.Write(bytesData)
+		return err
 	}
 }
 
@@ -471,7 +476,7 @@ func (client *Client) do(fetchBody bool, method, url string, data any, headers .
 			}()
 		default:
 			bytesData, _ := cast.ToJSONBytes(data)
-			if len(bytesData) > 0 && string(bytesData) != "null" {
+			if len(bytesData) > 0 && !bytes.Equal(bytesData, []byte("null")) {
 				reader = bytes.NewReader(bytesData)
 				contentType = "application/json"
 				contentLength = len(bytesData)
