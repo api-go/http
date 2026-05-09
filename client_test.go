@@ -44,7 +44,7 @@ func TestLocalServer(t *testing.T) {
 		_, _ = w.Write([]byte("world"))
 	})
 
-	server := &http.Server{Addr: ":18080", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18080", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 
@@ -102,7 +102,7 @@ func BenchmarkGet(b *testing.B) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
-	server := &http.Server{Addr: ":18082", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18082", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -121,7 +121,7 @@ func TestManualDo(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("stream"))
 	})
-	server := &http.Server{Addr: ":18083", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18083", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -157,7 +157,7 @@ func TestDownload(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(content))
 	})
-	server := &http.Server{Addr: ":18084", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18084", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -189,7 +189,7 @@ func TestMultipartDo(t *testing.T) {
 		}
 		fmt.Fprintf(w, "foo=%s,file=%s", f, string(fileContent))
 	})
-	server := &http.Server{Addr: ":18086", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18086", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -210,7 +210,7 @@ func TestFormAndMap(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		fmt.Fprintf(w, "ct=%s,body=%s", ct, string(body))
 	})
-	server := &http.Server{Addr: ":18087", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18087", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)

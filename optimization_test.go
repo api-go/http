@@ -20,7 +20,7 @@ func TestOptimizationForms(t *testing.T) {
 		}
 		fmt.Fprintf(w, "foo=%v", r.Form["foo"])
 	})
-	server := &http.Server{Addr: ":18088", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18088", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -62,7 +62,7 @@ func TestMultipartStreaming(t *testing.T) {
 		}
 		fmt.Fprintf(w, "foo=%s,file=%s", f1, string(fileContent))
 	})
-	server := &http.Server{Addr: ":18089", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18089", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -86,7 +86,7 @@ func TestMultipartMultipleParts(t *testing.T) {
 		_ = r.ParseMultipartForm(10 << 20)
 		fmt.Fprintf(w, "foo=%v", r.MultipartForm.Value["foo"])
 	})
-	server := &http.Server{Addr: ":18090", Handler: handler}
+	server := &http.Server{Addr: "127.0.0.1:18090", Handler: handler}
 	go func() { _ = server.ListenAndServe() }()
 	defer server.Close()
 	time.Sleep(100 * time.Millisecond)
