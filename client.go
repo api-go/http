@@ -45,6 +45,28 @@ type Result struct {
 type Form map[string]string
 type Multipart map[string]any
 
+var DefaultClient = NewClient(30 * time.Second)
+
+func Get(url string, headers ...string) *Result {
+	return DefaultClient.Get(url, headers...)
+}
+
+func Post(url string, data any, headers ...string) *Result {
+	return DefaultClient.Post(url, data, headers...)
+}
+
+func Put(url string, data any, headers ...string) *Result {
+	return DefaultClient.Put(url, data, headers...)
+}
+
+func Delete(url string, data any, headers ...string) *Result {
+	return DefaultClient.Delete(url, data, headers...)
+}
+
+func Do(method, url string, data any, headers ...string) *Result {
+	return DefaultClient.Do(method, url, data, headers...)
+}
+
 func NewClient(timeout time.Duration) *Client {
 	if timeout < time.Millisecond && timeout > 0 {
 		timeout *= time.Millisecond

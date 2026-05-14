@@ -3,10 +3,10 @@ module apigo.cc/go/http
 go 1.25.0
 
 require (
-	apigo.cc/go/cast v1.3.0
+	apigo.cc/go/cast v1.3.2
 	apigo.cc/go/encoding v1.3.0
-	apigo.cc/go/file v1.3.0
-	apigo.cc/go/log v1.3.0
+	apigo.cc/go/file v1.3.1
+	apigo.cc/go/log v1.3.2
 	apigo.cc/go/rand v1.3.0
 	golang.org/x/net v0.54.0
 )
