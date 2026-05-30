@@ -22,9 +22,12 @@ func init() {
 			return wrapResult(Delete(url, data, headers...))
 		},
 
-		// Timeout control
-		"timeout": func(ms int) *jsClient {
+		// Client creation
+		"new": func(ms int) *jsClient {
 			return &jsClient{c: NewClient(time.Duration(ms) * time.Millisecond)}
+		},
+		"newH2C": func(ms int) *jsClient {
+			return &jsClient{c: NewClientH2C(time.Duration(ms) * time.Millisecond)}
 		},
 
 		// Data markers
@@ -34,10 +37,6 @@ func init() {
 		"multipart": func(data map[string]any) Multipart {
 			return Multipart(data)
 		},
-
-		// Global Headers
-		"setGlobalHeader": DefaultClient.SetGlobalHeader,
-		"getGlobalHeader": DefaultClient.GetGlobalHeader,
 	})
 }
 

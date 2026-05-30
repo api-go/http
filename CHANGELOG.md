@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.3.4 (2026-05-30)
+- **API 变更**: 将 `timeout(ms)` 拆分为 `new(ms)` 和 `newH2C(ms)` 以支持 HTTP/2 Cleartext。
+- **安全性**: 移除 `setGlobalHeader` / `getGlobalHeader` 以增强脚本间隔离。
+
 ## v1.3.3 (2026-05-30)
 - **新增**: 注册到 `jsmod`。
 - **优化 (JSMOD)**: 提供 `timeout(ms)` 支持动态超时控制，封装 `jsResult` 以屏蔽敏感的 `Save()` 方法，支持 `form()` 和 `multipart()` 数据标记。
