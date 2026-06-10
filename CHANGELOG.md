@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.5.1 (2026-06-08)
+- **JS 对齐 & 安全加固**:
+    - HTTP 方法名统一更正为全大写（`GET`, `POST`, `PUT`, `DELETE`），强化协议语义。
+    - **Headers 优化**: JS 侧 Headers 参数从变长字符串改为更符合 JS 习惯的 `map[string]string` 对象。
+    - **深度安全扫描**: 在 `POST/PUT` 请求中对 `Multipart` 涉及的文件路径进行前置扫描，强制通过 `file.VerifyPathForSafeMode` 校验，严防低代码环境下的敏感文件泄露。
+    - **结果集对齐**: `Result.Save` 方法现在同样受安全沙箱控制。
+
 ## v1.3.4 (2026-05-30)
 - **API 变更**: 将 `timeout(ms)` 拆分为 `new(ms)` 和 `newH2C(ms)` 以支持 HTTP/2 Cleartext。
 - **安全性**: 移除 `setGlobalHeader` / `getGlobalHeader` 以增强脚本间隔离。

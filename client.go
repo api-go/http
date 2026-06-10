@@ -188,7 +188,7 @@ func (client *Client) doByRequest(manualDo bool, request *http.Request, method, 
 		}
 	}
 	if !foundID {
-		headers = append(headers, HeaderRequestID, string(encoding.Hex(rand.Bytes(16))))
+		headers = append(headers, HeaderRequestID, encoding.Hex(rand.Bytes(16)))
 	}
 
 	// 续传 X-Forwarded-For
