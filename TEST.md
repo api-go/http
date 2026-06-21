@@ -15,8 +15,12 @@ goos: darwin
 goarch: amd64
 pkg: apigo.cc/go/http
 cpu: Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz
-BenchmarkGet-16            16364             74735 ns/op
+BenchmarkGet-16    	   13606	     79289 ns/op
 ```
+
+## 🛡️ 鲁棒性防御 (Robustness)
+- **可选参数与验证**：`POST`/`PUT` 请求自动前置验证 `Multipart` 文件的安全路径，并受安全沙箱控制。
+- **JS 错误调用栈**：JS 桥接层改用具名导出并使用 `jsmod.MakeError` 包裹错误，确保 JS 抛出异常时携带准确的 Go 运行时堆栈。
 
 ## 测试覆盖率
 - **整体覆盖率**: 56.5% of statements

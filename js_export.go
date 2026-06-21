@@ -11,41 +11,57 @@ import (
 func init() {
 	jsmod.Register("http", map[string]any{
 		// Static requests with default timeout (30s)
-		"GET": func(ctx context.Context, url string, headers map[string]string) *jsResult {
-			return wrapResult(ctx, Get(url, flattenHeaders(headers)...))
-		},
-		"POST": func(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
-			if err := verifyMultipart(ctx, data); err != nil {
-				return nil, err
-			}
-			return wrapResult(ctx, Post(url, data, flattenHeaders(headers)...)), nil
-		},
-		"PUT": func(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
-			if err := verifyMultipart(ctx, data); err != nil {
-				return nil, err
-			}
-			return wrapResult(ctx, Put(url, data, flattenHeaders(headers)...)), nil
-		},
-		"DELETE": func(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
-			return wrapResult(ctx, Delete(url, data, flattenHeaders(headers)...))
-		},
+		"GET":       jsGET,
+		"POST":      jsPOST,
+		"PUT":       jsPUT,
+		"DELETE":    jsDELETE,
 
 		// Client creation
-		"New": func(ms int) *jsClient {
-			return &jsClient{c: NewClient(time.Duration(ms) * time.Millisecond)}
-		},
-		"NewH2C": func(ms int) *jsClient {
-			return &jsClient{c: NewClientH2C(time.Duration(ms) * time.Millisecond)}
-		},
+		"New":       jsNewClient,
+		"NewH2C":    jsNewClientH2C,
 
 		// Data markers
-		"Form": func(data map[string]string) Form {
-			return Form(data)
-		},
-		"Multipart": func(data map[string]any) Multipart {
-			return Multipart(data)
-		},
+		"Form":      jsForm,
+		"Multipart": jsMultipart,
 	})
+}
+
+func jsGET(ctx context.Context, url string, headers map[string]string) *jsResult {
+	return wrapResult(ctx, Get(url, flattenHeaders(headers)...))
+}
+
+func jsPOST(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
+	if err := verifyMultipart(ctx, data); err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return wrapResult(ctx, Post(url, data, flattenHeaders(headers)...)), nil
+}
+
+func jsPUT(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
+	if err := verifyMultipart(ctx, data); err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return wrapResult(ctx, Put(url, data, flattenHeaders(headers)...)), nil
+}
+
+func jsDELETE(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
+	return wrapResult(ctx, Delete(url, data, flattenHeaders(headers)...))
+}
+
+func jsNewClient(ms int) *jsClient {
+	return &jsClient{c: NewClient(time.Duration(ms) * time.Millisecond)}
+}
+
+func jsNewClientH2C(ms int) *jsClient {
+	return &jsClient{c: NewClientH2C(time.Duration(ms) * time.Millisecond)}
+}
+
+func jsForm(data map[string]string) Form {
+	return Form(data)
+}
+
+func jsMultipart(data map[string]any) Multipart {
+	return Multipart(data)
 }
 
 func flattenHeaders(m map[string]string) []string {
@@ -83,14 +99,14 @@ func (jc *jsClient) GET(ctx context.Context, url string, headers map[string]stri
 
 func (jc *jsClient) POST(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
-		return nil, err
+		return nil, jsmod.MakeError(err)
 	}
 	return wrapResult(ctx, jc.c.Post(url, data, flattenHeaders(headers)...)), nil
 }
 
 func (jc *jsClient) PUT(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
-		return nil, err
+		return nil, jsmod.MakeError(err)
 	}
 	return wrapResult(ctx, jc.c.Put(url, data, flattenHeaders(headers)...)), nil
 }
@@ -142,7 +158,10 @@ func (jr *jsResult) Error() string {
 func (jr *jsResult) Save(filename string) error {
 	p, err := file.VerifyPathForSafeMode(jr.ctx, filename)
 	if err != nil {
-		return err
+		return jsmod.MakeError(err)
 	}
-	return jr.r.Save(p)
+	if err := jr.r.Save(p); err != nil {
+		return jsmod.MakeError(err)
+	}
+	return nil
 }
