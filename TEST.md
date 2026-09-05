@@ -1,6 +1,6 @@
 # 测试报告
 
-## v1.5.4 验证
+## v1.5.5 验证
 - 独立模块解析、全量测试与基准测试均通过。
 
 ## 测试场景覆盖
@@ -11,14 +11,15 @@
 - **文件下载**: 验证了使用 `Download` 进行并发分段下载的功能。
 - **多部分表单 (Multipart)**: 验证了使用流式 `io.Pipe` 的 `Multipart` 发送，以及多类型、多值字段的支持。
 - **表单与映射**: 验证了使用 `Form`, `map[string]string`, `map[string][]string`, 和 `map[string][]any` 自动转为正确的 `application/x-www-form-urlencoded` 或 `application/json`。
+- **WebSocket 客户端**: 验证了握手响应、全局与单次 Header、Cookie Jar，以及文本、二进制和 JSON 消息往返。
 
 ## 性能测试结果 (Benchmark)
 ```
 goos: darwin
-goarch: amd64
+goarch: arm64
 pkg: apigo.cc/go/http
-cpu: Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz
-BenchmarkGet-16    	   13606	     79289 ns/op
+cpu: Apple M3 Max
+BenchmarkGet-16    	   30822	     37110 ns/op
 ```
 
 ## 🛡️ 鲁棒性防御 (Robustness)
@@ -26,4 +27,4 @@ BenchmarkGet-16    	   13606	     79289 ns/op
 - **JS 错误调用栈**：JS 桥接层改用具名导出并使用 `jsmod.MakeError` 包裹错误，确保 JS 抛出异常时携带准确的 Go 运行时堆栈。
 
 ## 测试覆盖率
-- **整体覆盖率**: 56.5% of statements
+- **整体覆盖率**: 49.6% of statements

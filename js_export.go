@@ -15,10 +15,11 @@ func init() {
 		"POST":      jsPOST,
 		"PUT":       jsPUT,
 		"DELETE":    jsDELETE,
+		"WebSocket": jsWebSocket,
 
 		// Client creation
-		"New":       jsNewClient,
-		"NewH2C":    jsNewClientH2C,
+		"New":    jsNewClient,
+		"NewH2C": jsNewClientH2C,
 
 		// Data markers
 		"Form":      jsForm,
@@ -46,6 +47,14 @@ func jsPUT(ctx context.Context, url string, data any, headers map[string]string)
 
 func jsDELETE(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
 	return wrapResult(ctx, Delete(url, data, flattenHeaders(headers)...))
+}
+
+func jsWebSocket(url string, headers map[string]string) (*jsWebSocketConn, error) {
+	conn, err := WebSocket(url, flattenHeaders(headers)...)
+	if err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return &jsWebSocketConn{conn: conn}, nil
 }
 
 func jsNewClient(ms int) *jsClient {
@@ -113,6 +122,55 @@ func (jc *jsClient) PUT(ctx context.Context, url string, data any, headers map[s
 
 func (jc *jsClient) DELETE(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
 	return wrapResult(ctx, jc.c.Delete(url, data, flattenHeaders(headers)...))
+}
+
+func (jc *jsClient) WebSocket(url string, headers map[string]string) (*jsWebSocketConn, error) {
+	conn, err := jc.c.WebSocket(url, flattenHeaders(headers)...)
+	if err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return &jsWebSocketConn{conn: conn}, nil
+}
+
+type jsWebSocketConn struct {
+	conn *WebSocketConn
+}
+
+func (conn *jsWebSocketConn) Send(data any) error {
+	if err := conn.conn.Send(data); err != nil {
+		return jsmod.MakeError(err)
+	}
+	return nil
+}
+
+func (conn *jsWebSocketConn) ReadString() (string, error) {
+	value, err := conn.conn.ReadString()
+	if err != nil {
+		return "", jsmod.MakeError(err)
+	}
+	return value, nil
+}
+
+func (conn *jsWebSocketConn) ReadBytes() ([]byte, error) {
+	value, err := conn.conn.ReadBytes()
+	if err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return value, nil
+}
+
+func (conn *jsWebSocketConn) ReadJSON(value any) error {
+	if err := conn.conn.ReadJSON(value); err != nil {
+		return jsmod.MakeError(err)
+	}
+	return nil
+}
+
+func (conn *jsWebSocketConn) Close() error {
+	if err := conn.conn.Close(); err != nil {
+		return jsmod.MakeError(err)
+	}
+	return nil
 }
 
 // jsResult wraps *Result to hide sensitive methods like Save()

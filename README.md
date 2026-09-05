@@ -10,6 +10,7 @@
 *   **Header 透传**: 自动处理微服务链路中常见的 `X-` 系列 Header 透传（如 `X-Request-ID`, `X-Real-IP`）。
 *   **线程安全**: 全局 Header 操作及客户端配置均实现并发安全，适合高并发场景。
 *   **H2C 支持**: 原生支持 HTTP/2 Cleartext (h2c) 协议。
+*   **WebSocket 客户端**: 复用客户端超时、Cookie 和全局 Header，支持文本、二进制及 JSON 消息。
 
 ## 🤖 开发与 AI 指导 (Developer & AI Guidelines)
 
@@ -62,11 +63,26 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 })
 ```
 
+### 4. WebSocket
+```go
+conn, err := c.WebSocket("wss://example.com/ws", "Authorization", "Bearer token")
+if err != nil {
+    log.Fatal(err)
+}
+defer conn.Close()
+
+_ = conn.Send(map[string]any{"action": "ping"})
+var reply map[string]any
+_ = conn.ReadJSON(&reply)
+```
+
 ## 🛠 API Reference
 
 ### 客户端创建
 - `func NewClient(timeout time.Duration) *Client`: 创建标准 HTTP 客户端。
 - `func NewClientH2C(timeout time.Duration) *Client`: 创建支持 H2C 的 HTTP 客户端。
+- `func WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 使用默认客户端建立 WebSocket 连接。
+- `func (c *Client) WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 建立复用客户端配置的 WebSocket 连接。
 
 ### 请求方法
 - `func (c *Client) Get(url string, headers ...string) *Result`
@@ -93,6 +109,13 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 - `func (rs *Result) Slice() []any`: 将响应体解析为 Slice。
 - `func To[T any](rs *Result) (T, error)`: 泛型解析辅助函数。
 - `func (rs *Result) Save(filename string) error`: 将响应体保存到文件。
+
+### WebSocket 连接
+- `func (c *WebSocketConn) Send(data any) error`: 字符串发送为文本、字节切片发送为二进制，其他值编码为 JSON。
+- `func (c *WebSocketConn) ReadString() (string, error)`
+- `func (c *WebSocketConn) ReadBytes() ([]byte, error)`
+- `func (c *WebSocketConn) ReadJSON(v any) error`
+- `func (c *WebSocketConn) Close() error`
 
 ## 许可证
 本项目基于 MIT 许可证开源。
