@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v1.5.6 (2026-09-05)
+- **依赖对齐**: 升级全部 `apigo.cc/go/*` 依赖至当前已发布版本。
+
 ## v1.5.5 (2026-09-05)
 - **WebSocket 客户端**: 基于 `github.com/gorilla/websocket v1.5.3` 新增包级与客户端级 `WebSocket` 连接能力，复用客户端超时、Cookie Jar 和全局 Header，并提供文本、二进制及 JSON 消息辅助方法。
 - **JS 支持**: `http.WebSocket` 与 `http.New(...).WebSocket` 可在低代码中建立和操作 WebSocket 连接。

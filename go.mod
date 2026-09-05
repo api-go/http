@@ -3,21 +3,21 @@ module apigo.cc/go/http
 go 1.25.0
 
 require (
-	apigo.cc/go/cast v1.5.5
-	apigo.cc/go/encoding v1.5.6
-	apigo.cc/go/file v1.5.6
+	apigo.cc/go/cast v1.5.6
+	apigo.cc/go/encoding v1.5.7
+	apigo.cc/go/file v1.5.7
 	apigo.cc/go/jsmod v1.5.4
-	apigo.cc/go/log v1.5.11
+	apigo.cc/go/log v1.5.12
 	apigo.cc/go/rand v1.5.4
 	github.com/gorilla/websocket v1.5.3
 	golang.org/x/net v0.54.0
 )
 
 require (
-	apigo.cc/go/config v1.5.4 // indirect
-	apigo.cc/go/id v1.5.7 // indirect
-	apigo.cc/go/safe v1.5.3 // indirect
-	apigo.cc/go/shell v1.5.6 // indirect
+	apigo.cc/go/config v1.5.5 // indirect
+	apigo.cc/go/id v1.5.8 // indirect
+	apigo.cc/go/safe v1.5.4 // indirect
+	apigo.cc/go/shell v1.5.7 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
