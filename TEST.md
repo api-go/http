@@ -1,5 +1,9 @@
 # 测试报告
 
+## v1.5.9 验证
+- `TestDoContextCancelsInFlightRequest` 验证 Context 取消会及时终止在途请求。
+- `go test -v ./...` 与 `go test -bench=. ./...` 通过。
+
 ## v1.5.7 验证
 - 独立模块解析、全量测试与基准测试均通过。
 

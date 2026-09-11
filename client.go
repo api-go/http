@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -214,11 +215,21 @@ func (client *Client) doByRequest(manualDo bool, request *http.Request, method, 
 }
 
 func (client *Client) Do(method, url string, data any, headers ...string) *Result {
-	return client.do(true, method, url, data, headers...)
+	return client.do(context.Background(), true, method, url, data, headers...)
 }
 
 func (client *Client) ManualDo(method, url string, data any, headers ...string) *Result {
-	return client.do(false, method, url, data, headers...)
+	return client.do(context.Background(), false, method, url, data, headers...)
+}
+
+// DoContext performs a request that is canceled when ctx is done.
+func (client *Client) DoContext(ctx context.Context, method, url string, data any, headers ...string) *Result {
+	return client.do(ctx, true, method, url, data, headers...)
+}
+
+// ManualDoContext performs a streaming request that is canceled when ctx is done.
+func (client *Client) ManualDoContext(ctx context.Context, method, url string, data any, headers ...string) *Result {
+	return client.do(ctx, false, method, url, data, headers...)
 }
 
 type downloadRange struct {
@@ -436,7 +447,7 @@ func (client *Client) writeMultipartFile(writer *multipart.Writer, key, filename
 	return err
 }
 
-func (client *Client) do(fetchBody bool, method, url string, data any, headers ...string) *Result {
+func (client *Client) do(ctx context.Context, fetchBody bool, method, url string, data any, headers ...string) *Result {
 	var req *http.Request
 	var err error
 	contentType := ""
@@ -506,7 +517,10 @@ func (client *Client) do(fetchBody bool, method, url string, data any, headers .
 		}
 	}
 
-	req, err = http.NewRequest(method, url, reader)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	req, err = http.NewRequestWithContext(ctx, method, url, reader)
 	if err != nil {
 		return &Result{Error: err}
 	}

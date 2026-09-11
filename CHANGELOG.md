@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v1.5.9 (2026-09-12)
+- **请求取消**: 新增 `Client.DoContext` 与 `Client.ManualDoContext`，让调用方用 Context 取消普通及流式 HTTP 请求。
+
 ## v1.5.7 (2026-09-05)
 - **依赖对齐**: 升级 `config`、`file` 与 `log` 至当前已发布版本。
 

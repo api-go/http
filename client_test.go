@@ -1,17 +1,44 @@
 package http_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	ah "apigo.cc/go/http"
 	"golang.org/x/net/http2"
 )
+
+func TestDoContextCancelsInFlightRequest(t *testing.T) {
+	started := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client := ah.NewClient(10 * time.Second)
+	done := make(chan error, 1)
+	go func() { done <- client.DoContext(ctx, http.MethodGet, server.URL, nil).Error }()
+	<-started
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "context canceled") {
+			t.Fatalf("expected context cancellation, got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("request did not stop after context cancellation")
+	}
+}
 
 func TestHttp(t *testing.T) {
 	c := ah.NewClient(5 * time.Second)

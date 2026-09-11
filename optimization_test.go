@@ -41,7 +41,7 @@ func TestOptimizationForms(t *testing.T) {
 	if r2.Error != nil {
 		t.Fatalf("map[string][]any failed: %v", r2.Error)
 	}
-	// Multipart output might look different depending on how the server parses it, 
+	// Multipart output might look different depending on how the server parses it,
 	// but r.Form["foo"] should still work if it's multipart.
 	if r2.String() != "foo=[bar 123]" {
 		t.Errorf("expected foo=[bar 123], got %s", r2.String())
@@ -70,7 +70,7 @@ func TestMultipartStreaming(t *testing.T) {
 	c := ah.NewClient(time.Second)
 	// Test streaming Multipart
 	r := c.Post("http://127.0.0.1:18089/", ah.Multipart{
-		"foo": "bar",
+		"foo":  "bar",
 		"file": io.NopCloser(strings.NewReader("baz")), // use Reader to force streaming
 	})
 	if r.Error != nil {

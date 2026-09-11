@@ -7,7 +7,7 @@ require (
 	apigo.cc/go/encoding v1.5.8
 	apigo.cc/go/file v1.5.9
 	apigo.cc/go/jsmod v1.5.4
-	apigo.cc/go/log v1.5.14
+	apigo.cc/go/log v1.5.15
 	apigo.cc/go/rand v1.5.4
 	github.com/gorilla/websocket v1.5.3
 	golang.org/x/net v0.54.0

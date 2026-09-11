@@ -16,7 +16,7 @@
 
 1.  **推荐使用 NewClient**: 通过 `NewClient(timeout)` 创建带连接池的客户端。
 3.  **下载优化**: 可以通过 `client.MaxConnsPerHost` 控制下载并发度（默认为 4）。
-4.  **资源释放**: 使用 `ManualDo` 或直接访问 `Response.Body` 时，必须确保执行 `Close()`。
+4.  **取消与资源释放**: 使用 `DoContext`/`ManualDoContext` 传播取消；使用 `ManualDo` 或直接访问 `Response.Body` 时，必须确保执行 `Close()`。
 
 ## 快速入门 (Quick Start)
 
