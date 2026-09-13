@@ -1,5 +1,10 @@
 # 测试报告
 
+## v1.5.10 验证
+- `TestWebSocketContextCancellation` 验证 Context 取消会关闭连接并中断阻塞读取。
+- `TestWebSocketHandshakeErrorRetainsResponse` 验证升级失败保留 HTTP 状态与响应 Header。
+- WebSocket 读写锁与幂等关闭覆盖托管连接复用所需的并发边界。
+
 ## v1.5.9 验证
 - `TestDoContextCancelsInFlightRequest` 验证 Context 取消会及时终止在途请求。
 - `go test -v ./...` 与 `go test -bench=. ./...` 通过。

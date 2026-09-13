@@ -10,7 +10,7 @@
 *   **Header 透传**: 自动处理微服务链路中常见的 `X-` 系列 Header 透传（如 `X-Request-ID`, `X-Real-IP`）。
 *   **线程安全**: 全局 Header 操作及客户端配置均实现并发安全，适合高并发场景。
 *   **H2C 支持**: 原生支持 HTTP/2 Cleartext (h2c) 协议。
-*   **WebSocket 客户端**: 复用客户端超时、Cookie 和全局 Header，支持文本、二进制及 JSON 消息。
+*   **WebSocket 客户端**: 复用客户端超时、Cookie 和全局 Header，支持 Context 取消、并发安全读写、Deadline、握手诊断以及文本、二进制和 JSON 消息。
 
 ## 🤖 开发与 AI 指导 (Developer & AI Guidelines)
 
@@ -82,7 +82,9 @@ _ = conn.ReadJSON(&reply)
 - `func NewClient(timeout time.Duration) *Client`: 创建标准 HTTP 客户端。
 - `func NewClientH2C(timeout time.Duration) *Client`: 创建支持 H2C 的 HTTP 客户端。
 - `func WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 使用默认客户端建立 WebSocket 连接。
+- `func WebSocketContext(ctx context.Context, url string, headers ...string) (*WebSocketConn, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
 - `func (c *Client) WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 建立复用客户端配置的 WebSocket 连接。
+- `func (c *Client) WebSocketContext(ctx context.Context, url string, headers ...string) (*WebSocketConn, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
 
 ### 请求方法
 - `func (c *Client) Get(url string, headers ...string) *Result`
@@ -115,7 +117,11 @@ _ = conn.ReadJSON(&reply)
 - `func (c *WebSocketConn) ReadString() (string, error)`
 - `func (c *WebSocketConn) ReadBytes() ([]byte, error)`
 - `func (c *WebSocketConn) ReadJSON(v any) error`
+- `func (c *WebSocketConn) SetReadDeadline(deadline time.Time) error`
+- `func (c *WebSocketConn) SetWriteDeadline(deadline time.Time) error`
 - `func (c *WebSocketConn) Close() error`
+
+同一连接允许一个读取者和一个写入者并行使用；同方向的并发操作会被串行化。升级失败时错误可通过 `errors.As` 转换为 `*WebSocketHandshakeError` 并读取 HTTP 响应，读取后应关闭 `Response.Body`。
 
 ## 许可证
 本项目基于 MIT 许可证开源。

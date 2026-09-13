@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v1.5.10 (2026-09-13)
+- **WebSocket 生命周期**: 新增 Context 建连与取消关闭、读写 Deadline、并发安全的单读者/单写者串行化，以及保留 HTTP 响应的握手错误。
+
 ## v1.5.9 (2026-09-12)
 - **请求取消**: 新增 `Client.DoContext` 与 `Client.ManualDoContext`，让调用方用 Context 取消普通及流式 HTTP 请求。
 
