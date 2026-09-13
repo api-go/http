@@ -28,7 +28,7 @@ goos: darwin
 goarch: arm64
 pkg: apigo.cc/go/http
 cpu: Apple M3 Max
-BenchmarkGet-16    	   30822	     37110 ns/op
+BenchmarkGet-16    	   30687	     36867 ns/op
 ```
 
 ## 🛡️ 鲁棒性防御 (Robustness)
