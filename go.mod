@@ -3,11 +3,11 @@ module apigo.cc/go/http
 go 1.25.0
 
 require (
-	apigo.cc/go/cast v1.5.7
+	apigo.cc/go/cast v1.5.8
 	apigo.cc/go/encoding v1.5.8
 	apigo.cc/go/file v1.5.9
 	apigo.cc/go/jsmod v1.5.5
-	apigo.cc/go/log v1.5.15
+	apigo.cc/go/log v1.5.17
 	apigo.cc/go/rand v1.5.4
 	github.com/gorilla/websocket v1.5.3
 	golang.org/x/net v0.54.0

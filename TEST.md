@@ -37,3 +37,12 @@ BenchmarkGet-16    	   30687	     36867 ns/op
 
 ## 测试覆盖率
 - **整体覆盖率**: 49.6% of statements
+
+## v1.5.11 发布验证（2026-10-10）
+
+- GOWORK=off go test -v ./... 与 go test -bench=. ./... 通过，依赖均为已发布 tag。
+- API 以 GOWORK=off go doc 与导出源码交叉核对（getExports 工具不可用）。
+
+```text
+BenchmarkGet-16    	   18500	     66281 ns/op
+```
