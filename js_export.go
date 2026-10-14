@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"apigo.cc/go/cast"
 	"apigo.cc/go/file"
 	"apigo.cc/go/jsmod"
 )
@@ -11,11 +13,11 @@ import (
 func init() {
 	jsmod.Register("http", map[string]any{
 		// Static requests with default timeout (30s)
-		"GET":       jsGET,
-		"POST":      jsPOST,
-		"PUT":       jsPUT,
-		"DELETE":    jsDELETE,
-		"WebSocket": jsWebSocket,
+		"GET":    jsGET,
+		"POST":   jsPOST,
+		"PUT":    jsPUT,
+		"DELETE": jsDELETE,
+		"Open":   jsOpen,
 
 		// Client creation
 		"New":    jsNewClient,
@@ -49,8 +51,8 @@ func jsDELETE(ctx context.Context, url string, data any, headers map[string]stri
 	return wrapResult(ctx, Delete(url, data, flattenHeaders(headers)...))
 }
 
-func jsWebSocket(url string, headers map[string]string) (*jsWebSocketConn, error) {
-	conn, err := WebSocket(url, flattenHeaders(headers)...)
+func jsOpen(ctx context.Context, url string, headers map[string]any) (*jsWebSocketConn, error) {
+	conn, _, err := OpenContext(ctx, url, websocketHeaders(headers))
 	if err != nil {
 		return nil, jsmod.MakeError(err)
 	}
@@ -124,8 +126,8 @@ func (jc *jsClient) DELETE(ctx context.Context, url string, data any, headers ma
 	return wrapResult(ctx, jc.c.Delete(url, data, flattenHeaders(headers)...))
 }
 
-func (jc *jsClient) WebSocket(url string, headers map[string]string) (*jsWebSocketConn, error) {
-	conn, err := jc.c.WebSocket(url, flattenHeaders(headers)...)
+func (jc *jsClient) Open(ctx context.Context, url string, headers map[string]any) (*jsWebSocketConn, error) {
+	conn, _, err := jc.c.OpenContext(ctx, url, websocketHeaders(headers))
 	if err != nil {
 		return nil, jsmod.MakeError(err)
 	}
@@ -222,4 +224,19 @@ func (jr *jsResult) Save(filename string) error {
 		return jsmod.MakeError(err)
 	}
 	return nil
+}
+
+func websocketHeaders(headers map[string]any) http.Header {
+	result := make(http.Header)
+	for key, value := range headers {
+		switch value.(type) {
+		case []string, []any:
+			for _, item := range cast.To[[]string](value) {
+				result.Add(key, item)
+			}
+		default:
+			result.Set(key, cast.String(value))
+		}
+	}
+	return result
 }

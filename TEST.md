@@ -1,5 +1,11 @@
 # 测试报告
 
+## v1.5.12 验证
+- `TestOpenCancelsPendingHandshake` 验证取消不等待握手超时；`TestOpenRejectsUnofferedSubprotocol` 验证子协议边界。
+- 2026-10-14：GOWORK=off 全量、基准及 Open/WebSocket 专项 race（2 次）通过；Apple M3 Max，BenchmarkGet 31617 ns/op。API 使用 go doc -all 与源码核对。
+- Open 覆盖多值头、请求/响应 Cookie、HTTP2 Transport 私有 CA 继承、HTTP1 WebSocket 协商、配置不被修改、超时、取消及长拒绝正文长度归一化。
+- 公共 API 使用 GOWORK=off go doc 与导出源码核对。
+
 ## v1.5.10 验证
 - `TestWebSocketContextCancellation` 验证 Context 取消会关闭连接并中断阻塞读取。
 - `TestWebSocketHandshakeErrorRetainsResponse` 验证升级失败保留 HTTP 状态与响应 Header。

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [v1.5.12] - 2026-10-14
+- OpenContext 在 TCP 已连接、握手未完成时及时响应取消；拒绝未请求的上游子协议。
+- 客户端 WebSocket API 统一为 Open / OpenContext，直接返回握手响应；使用多值 http.Header；失败正文归一化并标记截断。
+- 支持独立 WebSocket Dialer、HTTP Transport TLS/拨号继承及配置快照 Clone。
+
 ## [v1.5.11] - 2026-10-10
 - 对齐 Log v1.5.17 及当前已发布的上游依赖。
 

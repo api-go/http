@@ -24,6 +24,7 @@ import (
 	"apigo.cc/go/file"
 	"apigo.cc/go/log"
 	"apigo.cc/go/rand"
+	"github.com/gorilla/websocket"
 	"golang.org/x/net/http2"
 )
 
@@ -31,6 +32,8 @@ type Client struct {
 	pool             *http.Client
 	globalHeaders    map[string]string
 	headersMu        sync.RWMutex
+	websocketMu      sync.RWMutex
+	websocketDialer  *websocket.Dialer
 	NoBody           bool
 	Debug            bool
 	DownloadPartSize int64

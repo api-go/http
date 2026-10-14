@@ -65,7 +65,8 @@ c.Download("local_file.zip", "https://example.com/large_file.zip", func(start, e
 
 ### 4. WebSocket
 ```go
-conn, err := c.WebSocket("wss://example.com/ws", "Authorization", "Bearer token")
+conn, response, err := c.Open("wss://example.com/ws", http.Header{"Authorization": {"Bearer token"}})
+_ = response // 成功或失败均返回握手响应
 if err != nil {
     log.Fatal(err)
 }
@@ -81,10 +82,10 @@ _ = conn.ReadJSON(&reply)
 ### 客户端创建
 - `func NewClient(timeout time.Duration) *Client`: 创建标准 HTTP 客户端。
 - `func NewClientH2C(timeout time.Duration) *Client`: 创建支持 H2C 的 HTTP 客户端。
-- `func WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 使用默认客户端建立 WebSocket 连接。
-- `func WebSocketContext(ctx context.Context, url string, headers ...string) (*WebSocketConn, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
-- `func (c *Client) WebSocket(url string, headers ...string) (*WebSocketConn, error)`: 建立复用客户端配置的 WebSocket 连接。
-- `func (c *Client) WebSocketContext(ctx context.Context, url string, headers ...string) (*WebSocketConn, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
+- `func Open(url string, headers ...http.Header) (*WebSocketConn, *http.Response, error)`: 使用默认客户端建立 WebSocket 连接。
+- `func OpenContext(ctx context.Context, url string, headers ...http.Header) (*WebSocketConn, *http.Response, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
+- `func (c *Client) Open(url string, headers ...http.Header) (*WebSocketConn, *http.Response, error)`: 建立复用客户端配置的 WebSocket 连接。
+- `func (c *Client) OpenContext(ctx context.Context, url string, headers ...http.Header) (*WebSocketConn, *http.Response, error)`: 建立随 Context 取消而关闭的 WebSocket 连接。
 
 ### 请求方法
 - `func (c *Client) Get(url string, headers ...string) *Result`
@@ -129,3 +130,11 @@ _ = conn.ReadJSON(&reply)
 ## v1.5.11 依赖基线
 
 本版本对齐 Log v1.5.17 与发布时模块索引中的上游已发布依赖；公开 API 保持兼容。
+
+## 本地未发布 Open 接口
+
+客户端 Go 与 JS 的 WebSocket 建连接口统一为 Open（Go 另有 OpenContext），删除旧 WebSocket / WebSocketContext 名称。Go 使用 http.Header，保留多值字段，并返回连接、握手响应、错误。失败正文最多保留 1024 字节，Content-Length 已归一化，WebSocketHandshakeError.BodyTruncated 标记截断。
+
+- `Client.SetWebSocketDialer(*websocket.Dialer)`：设置独立配置快照，nil 恢复 HTTP Transport 派生默认；支持私有 CA、mTLS、自定义拨号和压缩。TLS ALPN 固定 HTTP/1.1；自定义 NetDialTLSContext 必须自行遵守此协议。
+- `Client.WebSocketDialer() *websocket.Dialer`：取得配置副本。
+- `Client.Clone() *Client`：复制客户端配置和 Header，共享 Transport / CookieJar；配置应在服务开始前设置，Clone 不隔离共享连接池。

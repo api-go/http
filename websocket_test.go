@@ -44,7 +44,7 @@ func TestWebSocket(t *testing.T) {
 	client.SetGlobalHeader("X-Global", "global")
 	client.GetRawClient().Jar.SetCookies(mustURL(t, server.URL), []*http.Cookie{{Name: "session", Value: "ready"}})
 
-	conn, err := client.WebSocket("ws"+strings.TrimPrefix(server.URL, "http"), "X-Request", "request")
+	conn, _, err := client.Open("ws"+strings.TrimPrefix(server.URL, "http"), http.Header{"X-Request": {"request"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestWebSocketContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	conn, err := ah.WebSocketContext(ctx, "ws"+strings.TrimPrefix(server.URL, "http"))
+	conn, _, err := ah.OpenContext(ctx, "ws"+strings.TrimPrefix(server.URL, "http"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestWebSocketHandshakeErrorRetainsResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := ah.WebSocket("ws" + strings.TrimPrefix(server.URL, "http"))
+	_, _, err := ah.Open("ws" + strings.TrimPrefix(server.URL, "http"))
 	var handshakeErr *ah.WebSocketHandshakeError
 	if !errors.As(err, &handshakeErr) {
 		t.Fatalf("unexpected error: %v", err)
