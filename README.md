@@ -138,3 +138,12 @@ _ = conn.ReadJSON(&reply)
 - `Client.SetWebSocketDialer(*websocket.Dialer)`：设置独立配置快照，nil 恢复 HTTP Transport 派生默认；支持私有 CA、mTLS、自定义拨号和压缩。TLS ALPN 固定 HTTP/1.1；自定义 NetDialTLSContext 必须自行遵守此协议。
 - `Client.WebSocketDialer() *websocket.Dialer`：取得配置副本。
 - `Client.Clone() *Client`：复制客户端配置和 Header，共享 Transport / CookieJar；配置应在服务开始前设置，Clone 不隔离共享连接池。
+
+## JavaScript 请求契约（v1.5.13 候选，未发布）
+
+`http.New(timeoutMs)` 的超时单位为毫秒。GET/POST/PUT/DELETE 返回可读取 `Status()`、`String()`、`Map()`、`Error()` 的结果；传输失败保留在 `Error()`，调用方决定如何记录。请求继承当前调用 Context 的取消。
+
+```javascript
+const result = http.New(5000).GET(url, {})
+const healthy = !result.Error() && result.Status() === 200 && result.Map().ok === true
+```

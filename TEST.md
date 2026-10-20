@@ -1,5 +1,10 @@
 # 测试报告
 
+## v1.5.13 候选版本验证（未发布）
+- `TestJavaScriptHTTPResultAndCancellation` 覆盖静态/客户端 GET、DELETE 的结果返回形状、200/503 正文和调用 Context 超时。
+- Master 最小 JS 入口验证 HTTP 200、JSON正文、Error() 和生成声明一致；测试覆盖静态/客户端安全模式 DELETE 拒绝发送未授权本地文件。
+- GOWORK=off 全量、race、基准通过；BenchmarkGet 34743 ns/op。API 使用 go doc 与导出源码交叉核对。
+
 ## v1.5.12 验证
 - `TestOpenCancelsPendingHandshake` 验证取消不等待握手超时；`TestOpenRejectsUnofferedSubprotocol` 验证子协议边界。
 - 2026-10-14：GOWORK=off 全量、基准及 Open/WebSocket 专项 race（2 次）通过；Apple M3 Max，BenchmarkGet 31617 ns/op。API 使用 go doc -all 与源码核对。

@@ -29,26 +29,30 @@ func init() {
 	})
 }
 
-func jsGET(ctx context.Context, url string, headers map[string]string) *jsResult {
-	return wrapResult(ctx, Get(url, flattenHeaders(headers)...))
+// Keep jsResult (which has Error()) separate from the bridge's error-return slot.
+func jsGET(ctx context.Context, url string, headers map[string]string) (*jsResult, error) {
+	return wrapResult(ctx, DefaultClient.DoContext(ctx, http.MethodGet, url, nil, flattenHeaders(headers)...)), nil
 }
 
 func jsPOST(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
 		return nil, jsmod.MakeError(err)
 	}
-	return wrapResult(ctx, Post(url, data, flattenHeaders(headers)...)), nil
+	return wrapResult(ctx, DefaultClient.DoContext(ctx, http.MethodPost, url, data, flattenHeaders(headers)...)), nil
 }
 
 func jsPUT(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
 		return nil, jsmod.MakeError(err)
 	}
-	return wrapResult(ctx, Put(url, data, flattenHeaders(headers)...)), nil
+	return wrapResult(ctx, DefaultClient.DoContext(ctx, http.MethodPut, url, data, flattenHeaders(headers)...)), nil
 }
 
-func jsDELETE(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
-	return wrapResult(ctx, Delete(url, data, flattenHeaders(headers)...))
+func jsDELETE(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
+	if err := verifyMultipart(ctx, data); err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return wrapResult(ctx, DefaultClient.DoContext(ctx, http.MethodDelete, url, data, flattenHeaders(headers)...)), nil
 }
 
 func jsOpen(ctx context.Context, url string, headers map[string]any) (*jsWebSocketConn, error) {
@@ -104,26 +108,29 @@ type jsClient struct {
 	c *Client
 }
 
-func (jc *jsClient) GET(ctx context.Context, url string, headers map[string]string) *jsResult {
-	return wrapResult(ctx, jc.c.Get(url, flattenHeaders(headers)...))
+func (jc *jsClient) GET(ctx context.Context, url string, headers map[string]string) (*jsResult, error) {
+	return wrapResult(ctx, jc.c.DoContext(ctx, http.MethodGet, url, nil, flattenHeaders(headers)...)), nil
 }
 
 func (jc *jsClient) POST(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
 		return nil, jsmod.MakeError(err)
 	}
-	return wrapResult(ctx, jc.c.Post(url, data, flattenHeaders(headers)...)), nil
+	return wrapResult(ctx, jc.c.DoContext(ctx, http.MethodPost, url, data, flattenHeaders(headers)...)), nil
 }
 
 func (jc *jsClient) PUT(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
 	if err := verifyMultipart(ctx, data); err != nil {
 		return nil, jsmod.MakeError(err)
 	}
-	return wrapResult(ctx, jc.c.Put(url, data, flattenHeaders(headers)...)), nil
+	return wrapResult(ctx, jc.c.DoContext(ctx, http.MethodPut, url, data, flattenHeaders(headers)...)), nil
 }
 
-func (jc *jsClient) DELETE(ctx context.Context, url string, data any, headers map[string]string) *jsResult {
-	return wrapResult(ctx, jc.c.Delete(url, data, flattenHeaders(headers)...))
+func (jc *jsClient) DELETE(ctx context.Context, url string, data any, headers map[string]string) (*jsResult, error) {
+	if err := verifyMultipart(ctx, data); err != nil {
+		return nil, jsmod.MakeError(err)
+	}
+	return wrapResult(ctx, jc.c.DoContext(ctx, http.MethodDelete, url, data, flattenHeaders(headers)...)), nil
 }
 
 func (jc *jsClient) Open(ctx context.Context, url string, headers map[string]any) (*jsWebSocketConn, error) {

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## [v1.5.13] 候选，未发布 - 2026-10-20
+- 修复 JavaScript GET/DELETE 的结果对象被当作 Go error 返回，保留状态、正文和传输错误；静态与客户端调用均传播 Context 取消；DELETE 的 Multipart 文件同样执行安全模式授权。
+
 ## [v1.5.12] - 2026-10-14
 - OpenContext 在 TCP 已连接、握手未完成时及时响应取消；拒绝未请求的上游子协议。
 - 客户端 WebSocket API 统一为 Open / OpenContext，直接返回握手响应；使用多值 http.Header；失败正文归一化并标记截断。
