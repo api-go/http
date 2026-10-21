@@ -131,7 +131,7 @@ _ = conn.ReadJSON(&reply)
 
 本版本对齐 Log v1.5.17 与发布时模块索引中的上游已发布依赖；公开 API 保持兼容。
 
-## 本地未发布 Open 接口
+## WebSocket Open 接口
 
 客户端 Go 与 JS 的 WebSocket 建连接口统一为 Open（Go 另有 OpenContext），删除旧 WebSocket / WebSocketContext 名称。Go 使用 http.Header，保留多值字段，并返回连接、握手响应、错误。失败正文最多保留 1024 字节，Content-Length 已归一化，WebSocketHandshakeError.BodyTruncated 标记截断。
 
@@ -139,7 +139,7 @@ _ = conn.ReadJSON(&reply)
 - `Client.WebSocketDialer() *websocket.Dialer`：取得配置副本。
 - `Client.Clone() *Client`：复制客户端配置和 Header，共享 Transport / CookieJar；配置应在服务开始前设置，Clone 不隔离共享连接池。
 
-## JavaScript 请求契约（v1.5.13 候选，未发布）
+## JavaScript 请求契约（v1.5.13）
 
 `http.New(timeoutMs)` 的超时单位为毫秒。GET/POST/PUT/DELETE 返回可读取 `Status()`、`String()`、`Map()`、`Error()` 的结果；传输失败保留在 `Error()`，调用方决定如何记录。请求继承当前调用 Context 的取消。
 
