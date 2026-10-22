@@ -23,6 +23,8 @@ type WebSocketConn struct {
 	writeMu  sync.Mutex
 	closeMu  sync.Once
 	closed   chan struct{}
+	cancel   context.CancelFunc
+	cancelMu sync.Mutex
 }
 
 // WebSocketHandshakeError retains the HTTP response returned by a failed
@@ -36,7 +38,8 @@ type WebSocketHandshakeError struct {
 func (err *WebSocketHandshakeError) Error() string { return err.Err.Error() }
 func (err *WebSocketHandshakeError) Unwrap() error { return err.Err }
 
-// Open establishes an HTTP/1.1 WebSocket connection and returns its handshake.
+// Open establishes a WebSocket connection and returns its handshake.
+// Secure connections prefer RFC 8441 and retain HTTP/1.1 compatibility.
 func Open(url string, headers ...http.Header) (*WebSocketConn, *http.Response, error) {
 	return DefaultClient.OpenContext(context.Background(), url, headers...)
 }
@@ -58,6 +61,16 @@ func (client *Client) Open(url string, headers ...http.Header) (*WebSocketConn, 
 func (client *Client) OpenContext(ctx context.Context, url string, headers ...http.Header) (*WebSocketConn, *http.Response, error) {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	client.websocketMu.RLock()
+	useHTTP2 := client.websocketHTTP2
+	configured := client.websocketHTTP2Configured
+	client.websocketMu.RUnlock()
+	if useHTTP2 {
+		return client.openWebSocketHTTP2(ctx, url, headers...)
+	}
+	if !configured {
+		return client.openWebSocketAuto(ctx, url, headers...)
 	}
 	requestHeaders := make(http.Header)
 	for _, fields := range headers {
@@ -174,6 +187,7 @@ func (client *Client) SetWebSocketDialer(dialer *websocket.Dialer) {
 	client.websocketMu.Lock()
 	defer client.websocketMu.Unlock()
 	client.websocketDialer = cloneWebSocketDialer(dialer)
+	client.websocketDialerDerived = false
 }
 
 func cloneWebSocketDialer(dialer *websocket.Dialer) *websocket.Dialer {
@@ -218,6 +232,7 @@ func (client *Client) WebSocketDialer() *websocket.Dialer {
 // Clone shares the HTTP transport and cookie jar, while copying client settings
 // and headers. It can bound one handshake without changing a shared client.
 func (client *Client) Clone() *Client {
+	client.prepareWebSocketHTTP2()
 	cloned := &Client{NoBody: client.NoBody, Debug: client.Debug, DownloadPartSize: client.DownloadPartSize, MaxConnsPerHost: client.MaxConnsPerHost, globalHeaders: make(map[string]string)}
 	if client.pool != nil {
 		pool := *client.pool
@@ -230,6 +245,11 @@ func (client *Client) Clone() *Client {
 	client.headersMu.RUnlock()
 	client.websocketMu.RLock()
 	cloned.websocketDialer = cloneWebSocketDialer(client.websocketDialer)
+	cloned.websocketDialerDerived = client.websocketDialerDerived
+	cloned.websocketHTTP2 = client.websocketHTTP2
+	cloned.websocketHTTP2Configured = client.websocketHTTP2Configured
+	cloned.websocketHTTP2Fallback = client.websocketHTTP2Fallback
+	cloned.websocketHTTP2Transport = client.websocketHTTP2Transport
 	client.websocketMu.RUnlock()
 	return cloned
 }
@@ -306,7 +326,27 @@ func (conn *WebSocketConn) Close() error {
 	var err error
 	conn.closeMu.Do(func() {
 		close(conn.closed)
+		conn.cancelMu.Lock()
+		cancel := conn.cancel
+		conn.cancelMu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
 		err = conn.Conn.Close()
 	})
 	return err
+}
+
+// SetWebSocketOptions configures compression and buffer reuse while retaining
+// automatic protocol selection and the HTTP transport's network policy.
+// Configure before use. An independent SetWebSocketDialer policy is preserved.
+func (client *Client) SetWebSocketOptions(compression bool, writeBufferPool websocket.BufferPool) {
+	dialer := client.WebSocketDialer()
+	dialer.EnableCompression = compression
+	dialer.WriteBufferPool = writeBufferPool
+	client.websocketMu.Lock()
+	defer client.websocketMu.Unlock()
+	derived := client.websocketDialer == nil || client.websocketDialerDerived
+	client.websocketDialer = cloneWebSocketDialer(dialer)
+	client.websocketDialerDerived = derived
 }

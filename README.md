@@ -147,3 +147,22 @@ _ = conn.ReadJSON(&reply)
 const result = http.New(5000).GET(url, {})
 const healthy = !result.Error() && result.Status() === 200 && result.Map().ok === true
 ```
+
+## HTTP/2 WebSocket（v1.5.14）
+
+Open/OpenContext 默认自动选择协议：`wss://` 优先 H2，只有 ALPN 未协商 H2 或服务端未声明 RFC 8441 时退回 H1；普通 `ws://` 直接 H1，不探测 H2C。显式使用 NewClientH2C 的客户端仍可优先 H2C。不会从 WSS 降级到明文 WS，也不会因证书错误、超时、401/403、其他 HTTP 拒绝而重试。协议不支持的结果按目标地址缓存一分钟，最多 128 项；Clone 共享缓存与 H2 连接池。
+
+无需应用配置。`Client.SetWebSocketHTTP2(true)` 保留严格 H2、不降级；false 固定 H1，供需要明确协议的调用使用。自定义代理/TLS 拨号及独立 Gorilla 网络配置优先保持其网络策略，自动模式可继续走 H1；显式 http2.Transport 自行管理网络策略。TLS CA/mTLS 配置应在客户端使用前安装在 HTTP Transport 上。
+
+`IsWebSocketRequest` 识别两种握手；`UpgradeWebSocket` 复用 Gorilla Upgrader，处理函数须保持到连接关闭。Go/x/net 的服务端能力声明仍需在进程启动前设置 `GODEBUG=http2xconnect=1`，运行后设置不会生效；未设置时自动客户端保持兼容 H1。成功 H2 握手返回真实 200，关闭其 Body 不关闭隧道。Destroy 关闭空闲连接池。
+
+`Client.SetWebSocketOptions(compression bool, writeBufferPool websocket.BufferPool)` 设置压缩与缓冲池，同时保留自动协议协商和 HTTP Transport 的网络策略；独立 SetWebSocketDialer 的网络设置仍优先。
+
+## 完整客户端控制接口
+
+- 包级 `Get/Post/Put/Delete/Do` 使用 `DefaultClient`；`Do(method, url, data, headers...)` 支持显式方法。
+- `Client.GetRawClient() *http.Client` 暴露底层客户端；`EnableRedirect()` 启用跟随重定向；`SetGlobalHeader/GetGlobalHeader` 管理客户端共享 Header。
+- `Client.Do/ManualDo(method, url, data, headers...)` 与 `DoContext/ManualDoContext(ctx, ...)` 分别提供普通/手动响应处理和取消传播。
+- `Client.DoByRequest/ManualDoByRequest(request, method, url, data, headers...)` 从入口请求继承调用上下文与转发 Header。
+- `Client.Destroy()` 关闭空闲连接池并释放客户端；调用后不再使用该实例。
+- `Result` 保留 `Response *http.Response` 与 `Error error`；`DefaultClient` 是包级默认客户端。`WebSocketConn` 保留 Gorilla `Conn` 与实际握手 `Response`。

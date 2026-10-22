@@ -64,6 +64,7 @@ func TestOpenRetainsHTTP2TransportTLSSettings(t *testing.T) {
 	transport := server.Client().Transport.(*http.Transport).Clone()
 	transport.TLSClientConfig.NextProtos = []string{"h2", "http/1.1"}
 	client.GetRawClient().Transport = transport
+	client.SetWebSocketHTTP2(false)
 	if result := client.Get(server.URL); result.Error != nil || result.Response.ProtoMajor != 2 {
 		t.Fatalf("HTTP2: %v", result.Error)
 	}

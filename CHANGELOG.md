@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [v1.5.14] - 2026-10-23
+- 新增 RFC 8441 HTTP/2 WebSocket 客户端及升级适配器，复用 Gorilla 帧处理；WSS 默认智能协商，普通 WS 保持 H1。
+
+
 ## [v1.5.13] - 2026-10-21
 - 修复 JavaScript GET/DELETE 的结果对象被当作 Go error 返回，保留状态、正文和传输错误；静态与客户端调用均传播 Context 取消；DELETE 的 Multipart 文件同样执行安全模式授权。
 

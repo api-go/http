@@ -29,15 +29,20 @@ import (
 )
 
 type Client struct {
-	pool             *http.Client
-	globalHeaders    map[string]string
-	headersMu        sync.RWMutex
-	websocketMu      sync.RWMutex
-	websocketDialer  *websocket.Dialer
-	NoBody           bool
-	Debug            bool
-	DownloadPartSize int64
-	MaxConnsPerHost  int
+	pool                     *http.Client
+	globalHeaders            map[string]string
+	headersMu                sync.RWMutex
+	websocketMu              sync.RWMutex
+	websocketDialer          *websocket.Dialer
+	websocketDialerDerived   bool
+	websocketHTTP2           bool
+	websocketHTTP2Configured bool
+	websocketHTTP2Fallback   *webSocketFallbackCache
+	websocketHTTP2Transport  *http2.Transport
+	NoBody                   bool
+	Debug                    bool
+	DownloadPartSize         int64
+	MaxConnsPerHost          int
 }
 
 type Result struct {
@@ -139,6 +144,12 @@ func (client *Client) GetGlobalHeader(key string) string {
 }
 
 func (client *Client) Destroy() {
+	client.websocketMu.RLock()
+	transport := client.websocketHTTP2Transport
+	client.websocketMu.RUnlock()
+	if transport != nil {
+		transport.CloseIdleConnections()
+	}
 	if client.pool != nil {
 		client.pool.CloseIdleConnections()
 		client.pool = nil

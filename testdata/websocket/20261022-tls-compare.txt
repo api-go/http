@@ -1,0 +1,58 @@
+Date: 2026-10-22
+go version go1.26.4 darwin/arm64
+Command: GOWORK=off GODEBUG=http2xconnect=1 go test -run ^$ -bench BenchmarkWebSocketTLS -benchmem -benchtime=500ms -count=3
+
+goos: darwin
+goarch: arm64
+pkg: apigo.cc/go/http
+cpu: Apple M3 Max
+BenchmarkWebSocketTLSCompare/H1/64B/1Streams-16         	   42193	     15844 ns/op	   4.04 MB/s	         1.000 tcp-conns	    1161 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H1/64B/1Streams-16         	   40660	     15088 ns/op	   4.24 MB/s	         1.000 tcp-conns	    1161 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H1/64B/1Streams-16         	   35612	     15092 ns/op	   4.24 MB/s	         1.000 tcp-conns	    1161 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/1Streams-16         	   15831	     37973 ns/op	   1.69 MB/s	         1.000 tcp-conns	    1394 B/op	      12 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/1Streams-16         	   14367	     40622 ns/op	   1.58 MB/s	         1.000 tcp-conns	    1395 B/op	      12 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/1Streams-16         	   15194	     39583 ns/op	   1.62 MB/s	         1.000 tcp-conns	    1398 B/op	      12 allocs/op
+BenchmarkWebSocketTLSCompare/H1/64B/16Streams-16        	   58894	      9627 ns/op	   6.65 MB/s	        16.00 tcp-conns	    1162 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H1/64B/16Streams-16        	   55298	      9477 ns/op	   6.75 MB/s	        16.00 tcp-conns	    1162 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H1/64B/16Streams-16        	   65212	      9723 ns/op	   6.58 MB/s	        16.00 tcp-conns	    1162 B/op	       8 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/16Streams-16        	   64756	     10074 ns/op	   6.35 MB/s	         1.000 tcp-conns	    1312 B/op	      10 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/16Streams-16        	   58712	     11004 ns/op	   5.82 MB/s	         1.000 tcp-conns	    1313 B/op	      10 allocs/op
+BenchmarkWebSocketTLSCompare/H2/64B/16Streams-16        	   61533	      9808 ns/op	   6.53 MB/s	         1.000 tcp-conns	    1314 B/op	      10 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/1Streams-16       	   37602	     17214 ns/op	  59.49 MB/s	         1.000 tcp-conns	    4503 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/1Streams-16       	   31777	     19304 ns/op	  53.05 MB/s	         1.000 tcp-conns	    4503 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/1Streams-16       	   31778	     20114 ns/op	  50.91 MB/s	         1.000 tcp-conns	    4502 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/1Streams-16       	   13365	     45134 ns/op	  22.69 MB/s	         1.000 tcp-conns	    4869 B/op	      20 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/1Streams-16       	   13966	     44054 ns/op	  23.24 MB/s	         1.000 tcp-conns	    4862 B/op	      20 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/1Streams-16       	   14589	     41563 ns/op	  24.64 MB/s	         1.000 tcp-conns	    4870 B/op	      20 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/16Streams-16      	   58954	     10575 ns/op	  96.84 MB/s	        16.00 tcp-conns	    4505 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/16Streams-16      	   58689	     10378 ns/op	  98.67 MB/s	        16.00 tcp-conns	    4505 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H1/1024B/16Streams-16      	   59989	     10037 ns/op	 102.02 MB/s	        16.00 tcp-conns	    4505 B/op	      14 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/16Streams-16      	   49482	     13492 ns/op	  75.90 MB/s	         1.000 tcp-conns	    4730 B/op	      18 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/16Streams-16      	   39752	     12850 ns/op	  79.69 MB/s	         1.000 tcp-conns	    4732 B/op	      18 allocs/op
+BenchmarkWebSocketTLSCompare/H2/1024B/16Streams-16      	   45016	     12198 ns/op	  83.95 MB/s	         1.000 tcp-conns	    4724 B/op	      18 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/1Streams-16      	    3850	    157216 ns/op	 416.85 MB/s	         1.000 tcp-conns	  284279 B/op	      53 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/1Streams-16      	    4318	    146482 ns/op	 447.40 MB/s	         1.000 tcp-conns	  284508 B/op	      53 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/1Streams-16      	    3960	    156148 ns/op	 419.70 MB/s	         1.000 tcp-conns	  284403 B/op	      52 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/1Streams-16      	    1915	    316616 ns/op	 206.99 MB/s	         1.000 tcp-conns	  313291 B/op	     200 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/1Streams-16      	    1845	    339778 ns/op	 192.88 MB/s	         1.000 tcp-conns	  311895 B/op	     199 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/1Streams-16      	    1879	    322134 ns/op	 203.44 MB/s	         1.000 tcp-conns	  313224 B/op	     200 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/16Streams-16     	    8574	     71057 ns/op	 922.30 MB/s	        16.00 tcp-conns	  285158 B/op	      51 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/16Streams-16     	    7060	     72117 ns/op	 908.74 MB/s	        16.00 tcp-conns	  285232 B/op	      51 allocs/op
+BenchmarkWebSocketTLSCompare/H1/65536B/16Streams-16     	    8448	     71453 ns/op	 917.19 MB/s	        16.00 tcp-conns	  285225 B/op	      51 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/16Streams-16     	    2725	    197759 ns/op	 331.39 MB/s	         1.000 tcp-conns	  288749 B/op	     166 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/16Streams-16     	    3584	    188388 ns/op	 347.88 MB/s	         1.000 tcp-conns	  289198 B/op	     167 allocs/op
+BenchmarkWebSocketTLSCompare/H2/65536B/16Streams-16     	    3196	    183068 ns/op	 357.99 MB/s	         1.000 tcp-conns	  288307 B/op	     168 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/cold-16               	     430	   1501136 ns/op	  153279 B/op	     936 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/cold-16               	     339	   1564518 ns/op	  153125 B/op	     936 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/cold-16               	     397	   1565582 ns/op	  152856 B/op	     935 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/cold-16               	     312	   1691756 ns/op	  334870 B/op	    1287 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/cold-16               	     369	   1646416 ns/op	  331841 B/op	    1287 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/cold-16               	     379	   1670491 ns/op	  325524 B/op	    1286 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/warm-16               	     421	   1526612 ns/op	  152772 B/op	     930 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/warm-16               	     348	   1573652 ns/op	  152672 B/op	     930 allocs/op
+BenchmarkWebSocketTLSHandshake/H1/warm-16               	     391	   1574475 ns/op	  152550 B/op	     929 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5437	    106173 ns/op	  176217 B/op	     282 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5635	    111653 ns/op	  180050 B/op	     282 allocs/op
+BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5631	    106551 ns/op	  183690 B/op	     283 allocs/op
+PASS
+ok  	apigo.cc/go/http	39.466s

@@ -57,3 +57,15 @@ BenchmarkGet-16    	   30687	     36867 ns/op
 ```text
 BenchmarkGet-16    	   18500	     66281 ns/op
 ```
+
+## v1.5.14 HTTP/2 WebSocket 发布验证（2026-10-23）
+
+验证命令：`GOWORK=off GODEBUG=http2xconnect=1 go test -race -v ./...` 与 `GOWORK=off GODEBUG=http2xconnect=1 go test -bench=. ./...`。
+
+覆盖：自动 WSS→H2；ALPN 不支持 H2 时 H1 回退；独立子进程服务端不声明 RFC 8441 时 H1 回退；不重复发送 CONNECT；跨 Clone 的一分钟有界能力缓存；明文 WS 直接 H1；显式 H2C；私有 CA 继承、证书拒绝、独立 TLS Dialer 保留；401 不降级；子协议、多值 Cookie、消息、取消、Deadline、单流关闭、多流复用。显式 SetWebSocketHTTP2(false) 验证旧 H1 行为，true 验证严格 H2。API 使用 go doc -all 与导出源码交叉核对。
+
+TLS 对照实测、完整方法、三轮原始输出见 [性能报告](testdata/websocket/20261022-tls-compare.md)。Apple M3 Max / Go 1.26.4：1 KiB 单流回显中位数 H1 19.304 µs、H2 44.054 µs；16 流有效载荷吞吐 H1 98.67 MB/s、H2 79.69 MB/s，TCP 连接分别 16 与 1；warm 新建 WebSocket H1 1.574 ms、H2 0.107 ms。
+
+2026-10-23 独立发布检查：关闭工作区（`GOWORK=off`），默认启动及 `GODEBUG=http2xconnect=1` 两种模式的全量 `go test -v ./... -count=1`、`go vet ./...`、`go test -race ./... -count=1`、`go test -run=^$ -bench=. -benchmem ./...` 均通过；默认模式只跳过需服务端启动声明的严格 H2 专项，其 H1 回退仍实测。`ai/tools/getExports` 不可用，使用 `GOWORK=off go doc -all .` 与导出源码交叉核对；新导出为 `IsWebSocketRequest`、`UpgradeWebSocket`、`Client.SetWebSocketHTTP2` 和 `Client.SetWebSocketOptions`。
+
+Apple M3 Max 本轮单次基准（非三轮对照中位数）：BenchmarkGet 默认 34887 ns/op，H2 启动模式 34962 ns/op；H2Echo 35688 ns/op；TLS 1 KiB 单流 H1/H2 17956/41477 ns/op，warm 建连 H1/H2 1459146/103172 ns/op。历史三轮报告保留原日期和范围。
