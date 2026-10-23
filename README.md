@@ -166,3 +166,15 @@ Open/OpenContext 默认自动选择协议：`wss://` 优先 H2，只有 ALPN 未
 - `Client.DoByRequest/ManualDoByRequest(request, method, url, data, headers...)` 从入口请求继承调用上下文与转发 Header。
 - `Client.Destroy()` 关闭空闲连接池并释放客户端；调用后不再使用该实例。
 - `Result` 保留 `Response *http.Response` 与 `Error error`；`DefaultClient` 是包级默认客户端。`WebSocketConn` 保留 Gorilla `Conn` 与实际握手 `Response`。
+
+## External address / 外部地址（v1.5.15）
+
+`NewExternalAddressResolver(ExternalAddressPolicy{TrustedProxies: []string{"192.0.2.10/32"}})` validates an immutable policy. Call `resolver.Prepare(request)` at ingress before sharing or mutating the request. Empty policy trusts no proxies; RemoteAddr is the sole trust source, independent of client-IP/Request-ID handling.
+
+`RequestExternalAddress(request)` returns the pinned `ExternalAddress` (`Scheme`, canonical `Host`, `Hostname`, effective `Port`, `Origin`, `TrustedProxy`, `Err`). Without preparation it reads only actual TLS/Host. `IsHTTPS`, `SameOrigin(headers)`, `RelayHeaders(headers)` share the result. Check Err; reject invalid trusted metadata before business/security processing. Never treat this context as RPC destination or authentication.
+
+X-Host/X-Scheme and X-Forwarded-Host/Proto must each be complete single-value pairs; either pair is accepted, both must normalize to the same origin. Duplicates, comma lists and conflicts fail. Forwarded is not parsed: alone from a trusted peer it fails; beside supported pairs it is ignored and cleared on relay. Every proxy hop must overwrite single-value pairs. Untrusted forwarding headers are ignored and replaced on relay. Origin remains untouched; no automatic Origin propagation is added to RPC clients.
+
+SameOrigin compares scheme, case-insensitive hostname and effective port, including IPv6. Missing Origin remains allowed for compatibility; empty, null, repeated, list, credential, path, query and fragment origins fail. No global browser-origin enforcement is installed.
+
+`PreparedExternalAddress(request) (ExternalAddress, bool)` distinguishes ingress preparation (including errors) from legacy raw context; its boolean is not a proxy-trust credential. `RequestExternalAddress` pins a direct-only snapshot when no ingress resolver has run.

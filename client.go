@@ -187,9 +187,17 @@ func (client *Client) ManualDoByRequest(request *http.Request, method, url strin
 func (client *Client) doByRequest(manualDo bool, request *http.Request, method, url string, data any, settedHeaders ...string) *Result {
 	headers := make([]string, 0, len(RelayHeaders)*2+len(settedHeaders)+4)
 
+	sourceHeaders := request.Header
+	if address, prepared := PreparedExternalAddress(request); prepared {
+		if address.Err != nil {
+			return &Result{Error: address.Err}
+		}
+		sourceHeaders = sourceHeaders.Clone()
+		_ = address.RelayHeaders(sourceHeaders)
+	}
 	// 续传指定的头
 	for _, headerName := range RelayHeaders {
-		if value := request.Header.Get(headerName); value != "" {
+		if value := sourceHeaders.Get(headerName); value != "" {
 			headers = append(headers, headerName, value)
 		}
 	}

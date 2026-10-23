@@ -69,3 +69,10 @@ TLS 对照实测、完整方法、三轮原始输出见 [性能报告](testdata/
 2026-10-23 独立发布检查：关闭工作区（`GOWORK=off`），默认启动及 `GODEBUG=http2xconnect=1` 两种模式的全量 `go test -v ./... -count=1`、`go vet ./...`、`go test -race ./... -count=1`、`go test -run=^$ -bench=. -benchmem ./...` 均通过；默认模式只跳过需服务端启动声明的严格 H2 专项，其 H1 回退仍实测。`ai/tools/getExports` 不可用，使用 `GOWORK=off go doc -all .` 与导出源码交叉核对；新导出为 `IsWebSocketRequest`、`UpgradeWebSocket`、`Client.SetWebSocketHTTP2` 和 `Client.SetWebSocketOptions`。
 
 Apple M3 Max 本轮单次基准（非三轮对照中位数）：BenchmarkGet 默认 34887 ns/op，H2 启动模式 34962 ns/op；H2Echo 35688 ns/op；TLS 1 KiB 单流 H1/H2 17956/41477 ns/op，warm 建连 H1/H2 1459146/103172 ns/op。历史三轮报告保留原日期和范围。
+
+## External address validation (2026-10-23)
+- Direct TLS/HTTP, explicit proxy trust, spoofed headers, paired header conflicts/lists/duplicates, IPv6, ports, pinned snapshots and strict Origin structure.
+- Commands: GOWORK=off go test -v ./...; GOWORK=off go test -bench=. ./... .
+- API review fallback: GOWORK=off go doc plus exported source review (getExports unavailable).
+
+- Independent GOWORK=off full suite and race suite passed. Apple M3 Max: BenchmarkExternalAddress 1610 ns/op (includes httptest request creation); BenchmarkGet 35592 ns/op.

@@ -1,3 +1,6 @@
+## [v1.5.15] - 2026-10-23
+- Add request-pinned external address resolution, explicit direct-peer proxy trust, strict paired headers and structured same-origin checks. Forwarded lists are unsupported.
+
 # CHANGELOG
 
 ## [v1.5.14] - 2026-10-23
