@@ -76,3 +76,10 @@ Apple M3 Max 本轮单次基准（非三轮对照中位数）：BenchmarkGet 默
 - API review fallback: GOWORK=off go doc plus exported source review (getExports unavailable).
 
 - Independent GOWORK=off full suite and race suite passed. Apple M3 Max: BenchmarkExternalAddress 1610 ns/op (includes httptest request creation); BenchmarkGet 35592 ns/op.
+
+## v1.5.16 default relay validation (2026-10-23)
+- First hop without incoming ID uses actual connection; incoming ID preserves outer HTTPS, even without any proxy configuration. Later ID generation cannot change a pinned result. Optional direct and trusted modes override the default convention. Invalid mode and trusted-without-addresses are rejected.
+
+- Development validation passed: GOWORK=off go test -v ./..., go test -bench=. ./..., go test -race ./... and go vet ./.... Apple M3 Max: Default resolver 1681 ns/op; HTTP GET 36489 ns/op. HTTP is tested independently; downstream modules use documented explicit local replace mappings.
+
+- v1.5.16 发布复验：`GOWORK=off go test -v ./...` 与 `go test -bench=. ./...` 全部通过，无 replace；API 通过 `go doc -all .` 与导出源码核对（getExports 不可用）。

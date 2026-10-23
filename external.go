@@ -11,15 +11,35 @@ import (
 	"strings"
 )
 
-// ExternalAddressPolicy trusts actual direct peers independently of client IP policy.
-// An empty list trusts no proxies. Only single-value header pairs are supported.
-type ExternalAddressPolicy struct{ TrustedProxies []string }
+// ExternalAddressPolicy defaults to the controlled internal Request-ID relay contract.
+// Mode direct always uses the connection; trusted requires matching direct-peer CIDRs.
+// An omitted Mode with TrustedProxies selects trusted mode for compatibility.
+type ExternalAddressPolicy struct {
+	Mode           string
+	TrustedProxies []string
+}
 
 // ExternalAddressResolver is immutable and safe for concurrent use.
-type ExternalAddressResolver struct{ networks []netip.Prefix }
+type ExternalAddressResolver struct {
+	mode     string
+	networks []netip.Prefix
+}
 
 func NewExternalAddressResolver(policy ExternalAddressPolicy) (*ExternalAddressResolver, error) {
-	r := &ExternalAddressResolver{}
+	mode := policy.Mode
+	if mode == "" {
+		mode = "legacy"
+		if len(policy.TrustedProxies) > 0 {
+			mode = "trusted"
+		}
+	}
+	if mode != "legacy" && mode != "direct" && mode != "trusted" {
+		return nil, fmt.Errorf("invalid external address mode %q", mode)
+	}
+	if mode == "trusted" && len(policy.TrustedProxies) == 0 {
+		return nil, fmt.Errorf("trusted external address mode requires proxy addresses")
+	}
+	r := &ExternalAddressResolver{mode: mode}
 	for _, value := range policy.TrustedProxies {
 		prefix, err := netip.ParsePrefix(value)
 		if err != nil {
@@ -58,7 +78,7 @@ func directScheme(r *http.Request) string {
 	return "http"
 }
 
-// RequestExternalAddress returns the ingress-pinned result or a direct-only result.
+// RequestExternalAddress returns the pinned result or prepares the default internal relay policy.
 func RequestExternalAddress(r *http.Request) ExternalAddress {
 	if a, ok := r.Context().Value(externalAddressKey{}).(ExternalAddress); ok {
 		return a
@@ -72,21 +92,29 @@ func (resolver *ExternalAddressResolver) Prepare(r *http.Request) ExternalAddres
 		return a
 	}
 	a := parseExternalAddress(directScheme(r), r.Host)
-	peer, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		peer = r.RemoteAddr
+	mode := "legacy"
+	if resolver != nil {
+		mode = resolver.mode
 	}
-	ip, err := netip.ParseAddr(peer)
+	// Inspect the incoming ID before ingress creates one. This is the existing
+	// controlled-service relay convention, not a credential or CIDR trust claim.
+	relay := mode == "legacy" && r.Header.Get(HeaderRequestID) != ""
 	trusted := false
-	if err == nil && resolver != nil {
-		for _, prefix := range resolver.networks {
-			if prefix.Contains(ip.Unmap()) {
-				trusted = true
-				break
+	if mode == "trusted" {
+		peer, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			peer = r.RemoteAddr
+		}
+		if ip, err := netip.ParseAddr(peer); err == nil {
+			for _, prefix := range resolver.networks {
+				if prefix.Contains(ip.Unmap()) {
+					trusted = true
+					break
+				}
 			}
 		}
 	}
-	if trusted {
+	if trusted || relay {
 		scheme, host, present, e := externalHeaderPair(r.Header, HeaderScheme, HeaderHost)
 		scheme2, host2, present2, e2 := externalHeaderPair(r.Header, "X-Forwarded-Proto", "X-Forwarded-Host")
 		if e != nil || e2 != nil {
@@ -231,7 +259,7 @@ func (a ExternalAddress) RelayHeaders(h http.Header) error {
 	return nil
 }
 
-// PreparedExternalAddress distinguishes a trusted ingress snapshot (including errors)
+// PreparedExternalAddress distinguishes a parsed ingress snapshot (including errors)
 // from legacy raw relay context. The boolean reports preparation, not proxy trust.
 func PreparedExternalAddress(r *http.Request) (ExternalAddress, bool) {
 	a, ok := r.Context().Value(externalAddressKey{}).(ExternalAddress)

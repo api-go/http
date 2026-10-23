@@ -10,7 +10,7 @@ import (
 
 func TestExternalAddress(t *testing.T) {
 	trusted, _ := gohttp.NewExternalAddressResolver(gohttp.ExternalAddressPolicy{TrustedProxies: []string{"127.0.0.1/32"}})
-	direct, _ := gohttp.NewExternalAddressResolver(gohttp.ExternalAddressPolicy{})
+	direct, _ := gohttp.NewExternalAddressResolver(gohttp.ExternalAddressPolicy{Mode: "direct"})
 	for _, tc := range []struct {
 		name, host, scheme, origin string
 		headers                    http.Header
@@ -82,5 +82,51 @@ func BenchmarkExternalAddress(b *testing.B) {
 	for b.Loop() {
 		r := httptest.NewRequest("GET", "https://example.com/", nil)
 		resolver.Prepare(r)
+	}
+}
+
+func TestDefaultExternalRelayAndOptionalStrictPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		name, mode, id, want string
+		proxies              []string
+		bad                  bool
+	}{
+		{name: "first hop", want: "http://internal"},
+		{name: "internal default", id: "from-edge", want: "https://browser.example"},
+		{name: "explicit legacy", mode: "legacy", id: "from-edge", want: "https://browser.example"},
+		{name: "optional direct", mode: "direct", id: "from-edge", want: "http://internal"},
+		{name: "optional CIDR", mode: "trusted", proxies: []string{"203.0.113.1"}, id: "from-edge", want: "http://internal"},
+		{name: "invalid mode", mode: "bad", bad: true},
+		{name: "missing proxies", mode: "trusted", bad: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver, err := gohttp.NewExternalAddressResolver(gohttp.ExternalAddressPolicy{Mode: tc.mode, TrustedProxies: tc.proxies})
+			if tc.bad {
+				if err == nil {
+					t.Fatal("accepted invalid policy")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := httptest.NewRequest("GET", "http://internal/", nil)
+			r.Header.Set("X-Host", "browser.example")
+			r.Header.Set("X-Scheme", "https")
+			if tc.id != "" {
+				r.Header.Set("X-Request-ID", tc.id)
+			}
+			a := resolver.Prepare(r)
+			if a.Err != nil || a.Origin != tc.want {
+				t.Fatal(a)
+			}
+			if a.TrustedProxy {
+				t.Fatal("legacy relay was mislabeled CIDR trusted")
+			}
+			r.Header.Set("X-Request-ID", "generated-later")
+			if resolver.Prepare(r).Origin != tc.want {
+				t.Fatal("snapshot changed after ID generation")
+			}
+		})
 	}
 }

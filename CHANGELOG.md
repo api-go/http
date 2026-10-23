@@ -1,3 +1,6 @@
+## [v1.5.16] - 2026-10-23
+- 默认恢复受控内部 Request-ID 续传约定；保留 direct/trusted 可选增强策略，未配置也能逐跳保留外部 HTTPS。
+
 ## [v1.5.15] - 2026-10-23
 - Add request-pinned external address resolution, explicit direct-peer proxy trust, strict paired headers and structured same-origin checks. Forwarded lists are unsupported.
 

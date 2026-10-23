@@ -167,14 +167,20 @@ Open/OpenContext 默认自动选择协议：`wss://` 优先 H2，只有 ALPN 未
 - `Client.Destroy()` 关闭空闲连接池并释放客户端；调用后不再使用该实例。
 - `Result` 保留 `Response *http.Response` 与 `Error error`；`DefaultClient` 是包级默认客户端。`WebSocketConn` 保留 Gorilla `Conn` 与实际握手 `Response`。
 
-## External address / 外部地址（v1.5.15）
+## External address / 外部地址（v1.5.16）
 
-`NewExternalAddressResolver(ExternalAddressPolicy{TrustedProxies: []string{"192.0.2.10/32"}})` validates an immutable policy. Call `resolver.Prepare(request)` at ingress before sharing or mutating the request. Empty policy trusts no proxies; RemoteAddr is the sole trust source, independent of client-IP/Request-ID handling.
+`NewExternalAddressResolver(ExternalAddressPolicy{TrustedProxies: []string{"192.0.2.10/32"}})` validates an immutable policy. Call `resolver.Prepare(request)` at ingress before sharing or mutating the request. Default behavior (v1.5.16): an empty policy uses the existing internal Request-ID relay convention. Without an incoming Request-ID it uses actual TLS/Host; with an incoming ID it preserves supported address pairs. Preparation must happen before generating a missing ID.
 
-`RequestExternalAddress(request)` returns the pinned `ExternalAddress` (`Scheme`, canonical `Host`, `Hostname`, effective `Port`, `Origin`, `TrustedProxy`, `Err`). Without preparation it reads only actual TLS/Host. `IsHTTPS`, `SameOrigin(headers)`, `RelayHeaders(headers)` share the result. Check Err; reject invalid trusted metadata before business/security processing. Never treat this context as RPC destination or authentication.
+`RequestExternalAddress(request)` returns the pinned `ExternalAddress` (`Scheme`, canonical `Host`, `Hostname`, effective `Port`, `Origin`, `TrustedProxy`, `Err`). Without preparation it pins the default relay-policy result. `IsHTTPS`, `SameOrigin(headers)`, `RelayHeaders(headers)` share the result. Check Err; reject invalid trusted metadata before business/security processing. Never treat this context as RPC destination or authentication.
 
 X-Host/X-Scheme and X-Forwarded-Host/Proto must each be complete single-value pairs; either pair is accepted, both must normalize to the same origin. Duplicates, comma lists and conflicts fail. Forwarded is not parsed: alone from a trusted peer it fails; beside supported pairs it is ignored and cleared on relay. Every proxy hop must overwrite single-value pairs. Untrusted forwarding headers are ignored and replaced on relay. Origin remains untouched; no automatic Origin propagation is added to RPC clients.
 
 SameOrigin compares scheme, case-insensitive hostname and effective port, including IPv6. Missing Origin remains allowed for compatibility; empty, null, repeated, list, credential, path, query and fragment origins fail. No global browser-origin enforcement is installed.
 
-`PreparedExternalAddress(request) (ExternalAddress, bool)` distinguishes ingress preparation (including errors) from legacy raw context; its boolean is not a proxy-trust credential. `RequestExternalAddress` pins a direct-only snapshot when no ingress resolver has run.
+`PreparedExternalAddress(request) (ExternalAddress, bool)` distinguishes ingress preparation (including errors) from legacy raw context; its boolean is not a proxy-trust credential. `RequestExternalAddress` pins the default relay-policy snapshot when no ingress resolver has run.
+
+## 默认可用 / Default relay (v1.5.16)
+
+No proxy configuration is needed for controlled internal service chains: the outermost gateway writes canonical addressing; Service resolves before generating a missing Request-ID, and internal hops with an incoming ID preserve that address. Origin remains unchanged. Request-ID is the existing relay convention, not RPC authentication or a CIDR trust assertion; TrustedProxy is true only for a matched explicitly configured proxy.
+
+Optional `ExternalAddressPolicy.Mode`: empty/legacy uses this convention; direct always rebuilds from actual TLS/Host even with an incoming ID; trusted accepts address pairs only from configured TrustedProxies and requires at least one address/CIDR. Supplying TrustedProxies without Mode selects trusted mode, preserving the v1.5.15 explicit-policy behavior. A public Gateway business ingress defaults to direct so external headers are overwritten even if the client sends an ID. Management and internal Service default to legacy. Explicit forward-proxy policies remain available as enhancements.
