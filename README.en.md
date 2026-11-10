@@ -1,4 +1,4 @@
-# apigo.cc/go/http v1.5.14
+# github.com/api-go/http v1.5.14
 
 [中文 API 文档](README.md)
 

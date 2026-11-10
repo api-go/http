@@ -4,7 +4,7 @@ Command: GOWORK=off GODEBUG=http2xconnect=1 go test -run ^$ -bench BenchmarkWebS
 
 goos: darwin
 goarch: arm64
-pkg: apigo.cc/go/http
+pkg: github.com/api-go/http
 cpu: Apple M3 Max
 BenchmarkWebSocketTLSCompare/H1/64B/1Streams-16         	   42193	     15844 ns/op	   4.04 MB/s	         1.000 tcp-conns	    1161 B/op	       8 allocs/op
 BenchmarkWebSocketTLSCompare/H1/64B/1Streams-16         	   40660	     15088 ns/op	   4.24 MB/s	         1.000 tcp-conns	    1161 B/op	       8 allocs/op
@@ -55,4 +55,4 @@ BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5437	    106173 ns/
 BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5635	    111653 ns/op	  180050 B/op	     282 allocs/op
 BenchmarkWebSocketTLSHandshake/H2/warm-16               	    5631	    106551 ns/op	  183690 B/op	     283 allocs/op
 PASS
-ok  	apigo.cc/go/http	39.466s
+ok  	github.com/api-go/http	39.466s

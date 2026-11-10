@@ -19,11 +19,11 @@ import (
 	"sync"
 	"time"
 
-	"apigo.cc/go/cast"
-	"apigo.cc/go/encoding"
-	"apigo.cc/go/file"
-	"apigo.cc/go/log"
-	"apigo.cc/go/rand"
+	"github.com/api-go/cast"
+	"github.com/api-go/encoding"
+	"github.com/api-go/file"
+	"github.com/api-go/log"
+	"github.com/api-go/rand"
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/http2"
 )

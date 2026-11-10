@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	gohttp "apigo.cc/go/http"
+	gohttp "github.com/api-go/http"
 )
 
 // Same TLS server, payload and Gorilla framing on both protocols. No compression.

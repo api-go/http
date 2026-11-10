@@ -1,7 +1,7 @@
 package http_test
 
 import (
-	gohttp "apigo.cc/go/http"
+	gohttp "github.com/api-go/http"
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"

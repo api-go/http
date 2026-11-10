@@ -1,7 +1,7 @@
 package http
 
 import (
-	"apigo.cc/go/cast"
+	"github.com/api-go/cast"
 	"context"
 	"fmt"
 	"net"

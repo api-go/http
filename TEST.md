@@ -37,7 +37,7 @@
 ```
 goos: darwin
 goarch: arm64
-pkg: apigo.cc/go/http
+pkg: github.com/api-go/http
 cpu: Apple M3 Max
 BenchmarkGet-16    	   30687	     36867 ns/op
 ```
@@ -83,3 +83,13 @@ Apple M3 Max 本轮单次基准（非三轮对照中位数）：BenchmarkGet 默
 - Development validation passed: GOWORK=off go test -v ./..., go test -bench=. ./..., go test -race ./... and go vet ./.... Apple M3 Max: Default resolver 1681 ns/op; HTTP GET 36489 ns/op. HTTP is tested independently; downstream modules use documented explicit local replace mappings.
 
 - v1.5.16 发布复验：`GOWORK=off go test -v ./...` 与 `go test -bench=. ./...` 全部通过，无 replace；API 通过 `go doc -all .` 与导出源码核对（getExports 不可用）。
+
+## GitHub migration validation (pending release)
+
+Module paths and internal dependency versions are migrated. Development verification uses GOWORK=off and explicit sibling replacements; remove these replacements before release. See migration validation logs for actual results. Existing unrelated working changes are preserved and require separate review.
+
+API inventory verification: `GOWORK=off go doc` succeeded; output retained in the migration validation directory. Source exports were preserved by the path migration.
+
+## GitHub release verification
+
+GOWORK=off go test -v ./... and go test -bench=. ./... passed using published GitHub dependencies, without local replacements. go mod verify passed.

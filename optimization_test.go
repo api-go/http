@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	ah "apigo.cc/go/http"
+	ah "github.com/api-go/http"
 )
 
 func TestOptimizationForms(t *testing.T) {

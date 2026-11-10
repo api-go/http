@@ -1,6 +1,6 @@
-# apigo.cc/go/http
+# github.com/api-go/http
 
-`apigo.cc/go/http` 是一个极致精简、高性能且安全的 HTTP 客户端与工具集. 它基于原生 `net/http` 构建，提供了更友好的 API、自动化的 Header 透传、并行分段下载支持以及泛型数据绑定。
+`github.com/api-go/http` 是一个极致精简、高性能且安全的 HTTP 客户端与工具集. 它基于原生 `net/http` 构建，提供了更友好的 API、自动化的 Header 透传、并行分段下载支持以及泛型数据绑定。
 
 ## 核心特性
 
@@ -22,7 +22,7 @@
 
 ### 1. 基础请求与泛型绑定
 ```go
-import "apigo.cc/go/http"
+import "github.com/api-go/http"
 
 c := http.NewClient(time.Second * 5)
 

@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	gohttp "apigo.cc/go/http"
+	gohttp "github.com/api-go/http"
 	"github.com/gorilla/websocket"
 )
 

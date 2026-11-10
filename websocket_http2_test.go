@@ -1,7 +1,7 @@
 package http_test
 
 import (
-	gohttp "apigo.cc/go/http"
+	gohttp "github.com/api-go/http"
 	"bytes"
 	"context"
 	"github.com/gorilla/websocket"

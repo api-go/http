@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"apigo.cc/go/file"
-	_ "apigo.cc/go/http"
-	"apigo.cc/go/jsmod"
+	"github.com/api-go/file"
+	_ "github.com/api-go/http"
+	"github.com/api-go/jsmod"
 )
 
 func TestJavaScriptHTTPResultAndCancellation(t *testing.T) {

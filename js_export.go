@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"apigo.cc/go/cast"
-	"apigo.cc/go/file"
-	"apigo.cc/go/jsmod"
+	"github.com/api-go/cast"
+	"github.com/api-go/file"
+	"github.com/api-go/jsmod"
 )
 
 func init() {

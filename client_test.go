@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	ah "apigo.cc/go/http"
+	ah "github.com/api-go/http"
 	"golang.org/x/net/http2"
 )
 
