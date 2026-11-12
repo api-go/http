@@ -93,3 +93,9 @@ API inventory verification: `GOWORK=off go doc` succeeded; output retained in th
 ## GitHub release verification
 
 GOWORK=off go test -v ./... and go test -bench=. ./... passed using published GitHub dependencies, without local replacements. go mod verify passed.
+
+## 日志依赖联动 — 2026-11-12
+
+开发验证使用 GOWORK=off 与 go.mod 的显式本地 replace；执行完整测试、全量基准（benchtime=100ms），API 用 go doc 与导出源码交叉核对。结果记录在 /tmp/apigo-http-integration-*.txt。
+
+结果：完整测试与全量基准通过（本机，GOWORK=off）；外部依赖不具备时的测试跳过以原始输出为准。

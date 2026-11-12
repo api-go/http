@@ -31,3 +31,7 @@ SameOrigin compares scheme, case-insensitive hostname and effective port, includ
 No proxy configuration is needed for controlled internal service chains: the outermost gateway writes canonical addressing; Service resolves before generating a missing Request-ID, and internal hops with an incoming ID preserve that address. Origin remains unchanged. Request-ID is the existing relay convention, not RPC authentication or a CIDR trust assertion; TrustedProxy is true only for a matched explicitly configured proxy.
 
 Optional `ExternalAddressPolicy.Mode`: empty/legacy uses this convention; direct always rebuilds from actual TLS/Host even with an incoming ID; trusted accepts address pairs only from configured TrustedProxies and requires at least one address/CIDR. Supplying TrustedProxies without Mode selects trusted mode, preserving the v1.5.15 explicit-policy behavior. A public Gateway business ingress defaults to direct so external headers are overwritten even if the client sends an ID. Management and internal Service default to legacy. Explicit forward-proxy policies remain available as enhancements.
+
+### Realtime log integration (unreleased, 2026-11-12)
+
+Explicit local go.mod replacements link this change without go.work. File logs default to paired .gz/.dict files, read using logv or built-in application log commands. Keep both files together; NoCompress retains plaintext. Release dependencies in order and remove development replacements before tagging. Published version claims remain unchanged.
