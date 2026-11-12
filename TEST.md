@@ -99,3 +99,8 @@ GOWORK=off go test -v ./... and go test -bench=. ./... passed using published Gi
 开发验证使用 GOWORK=off 与 go.mod 的显式本地 replace；执行完整测试、全量基准（benchtime=100ms），API 用 go doc 与导出源码交叉核对。结果记录在 /tmp/apigo-http-integration-*.txt。
 
 结果：完整测试与全量基准通过（本机，GOWORK=off）；外部依赖不具备时的测试跳过以原始输出为准。
+
+
+## v1.5.18 发布验证 — 2026-11-12
+
+GOWORK=off；正式 GitHub 依赖，无本地 replace。完整 go test -v ./... 与 go test -bench=. -benchtime=100ms ./... 通过；Service/Gateway 设置 GODEBUG=http2xconnect=1。API 核对使用 go doc . 与导出源码（getExports 工具不可用）。可选外部环境测试按原规则跳过。详细输出 /tmp/apigo-http-release-tests.txt 与 /tmp/apigo-http-release-bench.txt。
