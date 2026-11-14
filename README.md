@@ -193,3 +193,7 @@ Optional `ExternalAddressPolicy.Mode`: empty/legacy uses this convention; direct
 ### Release v1.5.18 — 2026-11-12
 
 Released GitHub dependencies; no local development replacements. Full tests and benchmarks validated with GOWORK=off.
+
+v1.5.19: dependency alignment with safe v1.5.6 / crypto v1.5.11. Development uses explicit local replacements; remove before release. Public API unchanged.
+
+Release v1.5.19: verified with published dependencies and GOWORK=off; all temporary replacements have been removed. Earlier development-validation notes describe historical local checks.
